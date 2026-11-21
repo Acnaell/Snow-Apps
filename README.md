@@ -57,7 +57,7 @@ Cada achado vem com "O que fazer".
 Em todos os jogos, o Snow também mostra **a última medição do Monitor** (FPS e se o jogo ficou preso no processador ou na placa de vídeo), avisa se o jogo está **num disco com erros no SMART** e detecta **Easy Anti-Cheat / BattlEye** pela pasta do jogo. Conteúdos extras da Epic (DLC) e programas da Steam (Wallpaper Engine) não aparecem mais como jogos.
 
 ## Roda no meu PC?
-Compara o hardware com os **requisitos oficiais** de 15 jogos populares (Fortnite, LoL, Valorant, CS2, Rocket League, Apex, Marvel Rivals, EA FC 26, PUBG, Overwatch 2, Minecraft, GTA V Enhanced, RDR2, Elden Ring, Cyberpunk 2077), com o link da fonte de cada um. Diz em qual nível roda (mínimo, recomendado, máximo), **o que falta** para o próximo e, se você já mediu o jogo no Desempenho, mostra o FPS real ao lado. Os índices de processador e placa de vídeo são estimativas (±10–15%). `snow-cli canrun`.
+Compara o hardware com os **requisitos oficiais** de 15 jogos populares (Fortnite, LoL, Valorant, CS2, Rocket League, Apex, Marvel Rivals, EA FC 26, PUBG, Overwatch 2, Minecraft, GTA V Enhanced, RDR2, Elden Ring, Cyberpunk 2077), com o link da fonte de cada um. Diz em qual nível roda (mínimo, recomendado, máximo), **o que falta** para o próximo e, se você já mediu o jogo no Desempenho, mostra o FPS real ao lado. Para **qualquer outro jogo**, busque pelo nome: o Snow lê os requisitos da página do jogo na Steam e compara do mesmo jeito (avisa quando não reconhece um modelo citado). Os índices de processador e placa de vídeo são estimativas (±10–15%). `snow-cli canrun [--search "nome"]`.
 
 ## Snow Monitor
 - **Uso em tempo real** pelos contadores do Windows (PDH): CPU, núcleo mais ocupado, GPU 3D, VRAM e RAM.

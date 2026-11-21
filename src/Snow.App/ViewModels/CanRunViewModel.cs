@@ -6,6 +6,7 @@ using Snow.App.Infrastructure;
 using Snow.Core.Compat;
 using Snow.Core.Games;
 using Snow.Core.Hardware;
+using Snow.Platform.Compat;
 
 namespace Snow.App.ViewModels;
 
@@ -27,8 +28,77 @@ public sealed class CanRunRow(CanRunResult r, bool installed, string? measured)
     public ICommand OpenSourceCommand { get; } = new RelayCommand(() => Process.Start(new ProcessStartInfo(r.Game.Source) { UseShellExecute = true }));
 }
 
+public sealed record SteamHitRow(long AppId, string Name, ICommand Command);
+
 public sealed class CanRunViewModel : ObservableObject
 {
+    private readonly SteamStore _steam = new();
+    private HardwareProfile? _hw;
+    private List<CanRunRow> _all = [];
+
+    public CanRunViewModel()
+    {
+        SearchCommand = new RelayCommand(async () => await SearchSteamAsync(), () => !IsSearching && Query.Trim().Length >= 2);
+    }
+
+    public ICommand SearchCommand { get; }
+    public ObservableCollection<SteamHitRow> Hits { get; } = [];
+    public ObservableCollection<CanRunRow> SearchResult { get; } = [];
+    public bool HasHits => Hits.Count > 0;
+    public bool HasSearchResult => SearchResult.Count > 0;
+
+    private string _query = "";
+    /// <summary>Filtra a lista na hora; Enter/botão busca qualquer jogo na Steam.</summary>
+    public string Query
+    {
+        get => _query;
+        set { if (Set(ref _query, value)) { Filter(); CommandManager.InvalidateRequerySuggested(); } }
+    }
+    private bool _isSearching;
+    public bool IsSearching { get => _isSearching; set { Set(ref _isSearching, value); CommandManager.InvalidateRequerySuggested(); } }
+    private string _searchStatus = "Não achou na lista? Digite o nome e busque na Steam (requisitos da página do jogo).";
+    public string SearchStatus { get => _searchStatus; set => Set(ref _searchStatus, value); }
+
+    private void Filter()
+    {
+        var q = Query.Trim();
+        Rows.Clear();
+        foreach (var r in _all.Where(r => q.Length == 0 || r.Name.Contains(q, StringComparison.CurrentCultureIgnoreCase))) Rows.Add(r);
+    }
+
+    private async Task SearchSteamAsync()
+    {
+        IsSearching = true; Hits.Clear(); SearchResult.Clear();
+        SearchStatus = "Buscando na Steam…";
+        try
+        {
+            foreach (var h in await _steam.SearchAsync(Query.Trim()))
+                Hits.Add(new SteamHitRow(h.AppId, h.Name, new RelayCommand(async () => await PickAsync(h))));
+            SearchStatus = Hits.Count == 0 ? "Nada encontrado na Steam com esse nome." : "Escolha o jogo:";
+        }
+        catch (Exception e) { SearchStatus = "Não consegui falar com a Steam: " + e.Message; }
+        finally { IsSearching = false; OnPropertyChanged(nameof(HasHits)); OnPropertyChanged(nameof(HasSearchResult)); }
+    }
+
+    private async Task PickAsync(SteamStore.Hit h)
+    {
+        if (_hw is null) { SearchStatus = "Faça o diagnóstico primeiro."; return; }
+        IsSearching = true; SearchResult.Clear();
+        SearchStatus = $"Lendo os requisitos de {h.Name}…";
+        try
+        {
+            var req = await _steam.RequirementsAsync(h.AppId);
+            if (req is null) SearchStatus = $"{h.Name} não informa requisitos de PC na Steam.";
+            else
+            {
+                SearchResult.Add(new CanRunRow(CanRun.Evaluate(req, _hw), false, null));
+                Hits.Clear();
+                SearchStatus = $"Resultado para {req.Name}:";
+            }
+        }
+        catch (Exception e) { SearchStatus = "Não consegui ler os requisitos: " + e.Message; }
+        finally { IsSearching = false; OnPropertyChanged(nameof(HasHits)); OnPropertyChanged(nameof(HasSearchResult)); }
+    }
     /// <summary>Ids das lojas para marcar "instalado" (Steam app id, Epic, Riot).</summary>
     private static readonly Dictionary<string, string[]> StoreIds = new()
     {
@@ -45,6 +115,7 @@ public sealed class CanRunViewModel : ObservableObject
 
     public void Load(HardwareProfile hw, IEnumerable<string> installedIds)
     {
+        _hw = hw;
         var installed = installedIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var bench = MonitorViewModel.BenchDir;
         Rows.Clear();
@@ -53,6 +124,7 @@ public sealed class CanRunViewModel : ObservableObject
             var isInstalled = StoreIds.TryGetValue(r.Game.Id, out var ids) && ids.Any(installed.Contains);
             Rows.Add(new CanRunRow(r, isInstalled, Measured(bench, r.Game.MonitorKey)));
         }
+        _all = Rows.ToList();
         var cpu = HardwareIndex.Cpu(hw.Cpu);
         var gpu = HardwareIndex.Gpu(hw.PrimaryGpu?.Name);
         Summary = $"Processador: índice {(cpu?.ToString() ?? "?")} (Core i7-4770 = 100) · placa de vídeo: índice {(gpu?.ToString() ?? "?")} (GTX 1060 = 100) · {hw.Memory.TotalGb:0} GB de RAM. " +

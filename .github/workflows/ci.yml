@@ -109,7 +109,7 @@ jobs:
           # Inicialização: mesmo formato que o Gerenciador de Tarefas grava (02 = ativo, 03 + data = desativado)
           $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
           $ap = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'
-          New-Item -Force $ap | Out-Null
+          foreach ($k in $run, $ap) { if (-not (Test-Path $k)) { New-Item -Path $k -Force | Out-Null } }
           Set-ItemProperty $run 'SnowTesteAtivo' 'notepad.exe'
           Set-ItemProperty $run 'SnowTesteDesativado' 'notepad.exe'
           Set-ItemProperty $run 'SnowTesteSemRegistro' 'notepad.exe'
@@ -121,6 +121,9 @@ jobs:
           $out = & $cli canrun | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0 -or $out -notmatch 'Cyberpunk 2077') { throw "canrun falhou" }
+          $out = & $cli canrun --search "elden ring" | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch 'ELDEN RING' -or $out -notmatch 'índice 93') { throw "busca na Steam falhou" }
           $out = & $cli bench | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0 -or $out -notmatch 'leitura \d+ MB/s') { throw "bench falhou" }
