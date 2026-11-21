@@ -64,7 +64,7 @@
 
                     <TextBlock Text="SNOW MONITOR" Style="{StaticResource NavHeader}" Margin="12,18,0,6"/>
                     <RadioButton x:Name="NavMonitor" Style="{StaticResource NavButton}" GroupName="nav">
-                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE9F9;"/><TextBlock Text="Desempenho" Margin="12,0,0,0"/><TextBlock Text="em breve" Style="{StaticResource Caption}" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center"/></StackPanel>
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE9F9;"/><TextBlock Text="Desempenho" Margin="12,0,0,0"/></StackPanel>
                     </RadioButton>
 
                     <TextBlock Text="GERAL" Style="{StaticResource NavHeader}" Margin="12,18,0,6"/>
@@ -86,10 +86,7 @@
             <views:GamesView Visibility="{Binding IsChecked, ElementName=NavGames, Converter={StaticResource BoolVis}}"/>
             <views:StartupView Visibility="{Binding IsChecked, ElementName=NavStartup, Converter={StaticResource BoolVis}}"/>
             <views:HealthView Visibility="{Binding IsChecked, ElementName=NavHealth, Converter={StaticResource BoolVis}}"/>
-            <views:ComingSoonView Visibility="{Binding IsChecked, ElementName=NavMonitor, Converter={StaticResource BoolVis}}"
-                                  Title="Snow Monitor" Items="{x:Static views:ComingSoonView.MonitorItems}"
-                                  Subtitle="Análise de desempenho: uso do hardware, FPS e frametime enquanto você joga."
-                                  Footer="Projetado para conviver com anti-cheats (Riot Vanguard, EAC, BattlEye): sem injeção no jogo e sem drivers de kernel."/>
+            <views:MonitorView Visibility="{Binding IsChecked, ElementName=NavMonitor, Converter={StaticResource BoolVis}}"/>
             <views:RestoreView Visibility="{Binding IsChecked, ElementName=NavRestore, Converter={StaticResource BoolVis}}"/>
             <views:LogView Visibility="{Binding IsChecked, ElementName=NavLog, Converter={StaticResource BoolVis}}"/>
 

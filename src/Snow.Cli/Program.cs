@@ -26,6 +26,8 @@ public static class Program
           snow-cli startup                              Lista os itens de inicialização
           snow-cli purge-standby                        Esvazia a lista Standby da RAM
           snow-cli health                               Snow Health: nota de saúde, discos, estabilidade, drivers
+          snow-cli monitor [--seconds 30] [--game fortnite|lol|valorant]   Snow Monitor: uso, FPS e gargalo
+          snow-cli compare antes.csv depois.csv          Compara duas capturas do PresentMon/Snow Bench
           snow-cli games [--preset alto|medio]          Jogos instalados, pontos de melhora e prévia da predefinição
           snow-cli game-apply --id <id> --preset alto|medio [--yes]   Aplica a predefinição num jogo (com backup)
           snow-cli selftest --profile <perfil> [--skip ids]   Aplica, verifica e reverte (uso em CI)
@@ -67,6 +69,8 @@ public static class Program
                 "purge-standby" => RequireAdmin() ?? PurgeStandby(),
                 "games" => Games(opts),
                 "health" => Health(),
+                "monitor" => Monitor(opts),
+                "compare" => Compare(args.Skip(1).Where(a => !a.StartsWith("--")).ToArray()),
                 "game-apply" => GameApply(opts),
                 "selftest" => RequireAdmin() ?? SelfTest(opts),
                 "version" or "--version" => Version(),
@@ -279,6 +283,57 @@ public static class Program
             }
         }
         foreach (var w in r.Data.Warnings) Console.WriteLine($"(aviso de coleta) {w}");
+        return 0;
+    }
+
+    private static readonly Dictionary<string, string> GameProcesses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["fortnite"] = "FortniteClient-Win64-Shipping.exe",
+        ["lol"] = "League of Legends.exe",
+        ["valorant"] = "VALORANT-Win64-Shipping.exe",
+    };
+
+    private static int Monitor(Dictionary<string, string?> o)
+    {
+        var seconds = o.TryGetValue("seconds", out var s) && int.TryParse(s, out var n) ? n : 30;
+        using var pdh = new Snow.Platform.Monitor.PdhSampler();
+        Snow.Platform.Monitor.PresentMonLive? pm = null;
+        if (o.TryGetValue("game", out var g) && g is not null && GameProcesses.TryGetValue(g, out var proc))
+        {
+            if (Snow.Platform.Monitor.PresentMonLive.Find() is { } exe) pm = new(exe, proc);
+            else Console.WriteLine("PresentMon não encontrado (Downloads): só uso de hardware, sem FPS.");
+        }
+        Console.WriteLine($"Snow Monitor · {seconds}s · contadores de GPU: {(pdh.HasGpuCounters ? "sim" : "indisponíveis")}");
+        var samples = new List<Snow.Core.Monitor.UsageSample>();
+        for (var i = 0; i < seconds; i++)
+        {
+            Thread.Sleep(1000);
+            var (fps, low) = pm?.Current() ?? (null, null);
+            var x = pdh.Sample(fps, low);
+            samples.Add(x);
+            Console.WriteLine($"{x.Time:HH:mm:ss}  CPU {x.CpuPercent,5:0.0}%  núcleo {x.BusiestCorePercent,5:0.0}%  GPU {(x.GpuPercent?.ToString("0.0") ?? "  -  "),5}%  VRAM {(x.VramUsedGb?.ToString("0.0") ?? "-"),4} GB  RAM {x.RamUsedPercent,3:0}%  FPS {(x.Fps?.ToString("0") ?? "-"),4}  → {Snow.Core.Monitor.BottleneckClassifier.Label(Snow.Core.Monitor.BottleneckClassifier.Classify(x))}");
+        }
+        var summary = Snow.Core.Monitor.SessionSummary.From(samples, pm?.AllFrameTimes);
+        pm?.Dispose();
+        Console.WriteLine($"\nResumo: {Snow.Core.Monitor.BottleneckClassifier.Label(summary.Main)} · CPU média {summary.AvgCpu}% · GPU média {summary.AvgGpu?.ToString() ?? "-"}%");
+        foreach (var (b, pct) in summary.TimeShare.Where(kv => kv.Value > 0).OrderByDescending(kv => kv.Value))
+            Console.WriteLine($"  {Snow.Core.Monitor.BottleneckClassifier.Label(b),-28} {pct}% do tempo");
+        if (summary.Frames is { } f) Console.WriteLine($"  FPS médio {f.AvgFps} · 1% low {f.Low1} · 0,1% low {f.Low01} · engasgos {f.Stutters}");
+        Console.WriteLine($"  {Snow.Core.Monitor.BottleneckClassifier.Advice(summary.Main)}");
+        return 0;
+    }
+
+    private static int Compare(string[] files)
+    {
+        if (files.Length != 2) { Console.Error.WriteLine("Uso: snow-cli compare antes.csv depois.csv"); return 64; }
+        var a = Snow.Core.Monitor.PresentMonCapture.Parse(File.ReadAllText(files[0]));
+        var b = Snow.Core.Monitor.PresentMonCapture.Parse(File.ReadAllText(files[1]));
+        if (a.Stats is not { } sa || b.Stats is not { } sb) { Console.Error.WriteLine("Poucos quadros em um dos arquivos."); return 4; }
+        Console.WriteLine($"{"",-24}{"ANTES",12}{"DEPOIS",12}{"Δ",10}");
+        foreach (var r in Snow.Core.Monitor.SessionComparer.Compare(sa, sb))
+            Console.WriteLine($"{r.Metric,-24}{r.Before,12}{r.After,12}{r.Delta,10}  {(r.Better ? "✔" : "✖")}");
+        foreach (var (name, cap) in new[] { ("antes", a), ("depois", b) })
+            if (cap.BoundShare is { } bs) Console.WriteLine($"Gargalo ({name}): GPU em {bs.gpuBound}% dos quadros · CPU em {bs.cpuBound}%");
         return 0;
     }
 

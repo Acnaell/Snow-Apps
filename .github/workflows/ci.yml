@@ -86,6 +86,14 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $out -notmatch 'SNOW HEALTH: \d+/100') { throw "health falhou" }
           if ($out -match 'Coleta falhou') { throw "coleta do Health falhou" }
 
+      - name: Snow Monitor real (contadores PDH por 5 s)
+        shell: pwsh
+        run: |
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow-cli.exe"
+          $out = & $cli monitor --seconds 5 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch 'CPU\s+\d') { throw "monitor falhou" }
+
       - name: Instalar jogos simulados (Riot/Epic) com os arquivos de exemplo
         shell: pwsh
         run: |

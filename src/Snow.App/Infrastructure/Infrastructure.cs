@@ -40,6 +40,12 @@ public sealed class RelayCommand(Action<object?> execute, Func<object?, bool>? c
     public void Execute(object? parameter) => execute(parameter);
 }
 
+public sealed class InverseBoolConverter : System.Windows.Data.IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) => value is not true;
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) => value is not true;
+}
+
 public enum AppTheme { Dark, Light }
 
 /// <summary>

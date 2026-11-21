@@ -46,6 +46,7 @@ public sealed class MainViewModel : ObservableObject
 
         Games = new GamesViewModel(_service, _log, LoadBackups);
         Health = new HealthViewModel(_log);
+        Monitor = new MonitorViewModel(_log);
         Profiles = new ObservableCollection<ProfileCardViewModel>(ProfileCardViewModel.All());
         LastResult.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasResult));
         IsAdmin = Elevation.IsAdministrator();
@@ -69,6 +70,7 @@ public sealed class MainViewModel : ObservableObject
     // ───────────── Snow Gaming: jogos ─────────────
     public GamesViewModel Games { get; }
     public HealthViewModel Health { get; }
+    public MonitorViewModel Monitor { get; }
 
     // ───────────── Diagnóstico ─────────────
     public ObservableCollection<SpecCard> Specs { get; } = [];

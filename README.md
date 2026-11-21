@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>Snow Apps — um kit para o seu PC: <i>Snow Gaming</i> (otimização), <i>Snow Health</i> (saúde, em breve) e <i>Snow Monitor</i> (desempenho, em breve).</b><br>
+  <b>Snow Apps — um kit para o seu PC: <i>Snow Gaming</i> (otimização), <i>Snow Health</i> (saúde) e <i>Snow Monitor</i> (desempenho).</b><br>
   Diagnóstico de hardware e otimizações reais, seguras e reversíveis para jogos no Windows 10 e 11.<br>
   C# · .NET 8 · WPF · zero dependências externas · modo escuro
 </p>
@@ -41,6 +41,23 @@ O Snow foi desenhado para conviver com anti-cheats:
 - **Nenhum** driver de kernel. O Vanguard bloqueia drivers vulneráveis como o WinRing0, usado por muitos monitores de temperatura.
 - Jogos com configurações sincronizadas na conta (Valorant) ficam somente leitura.
 - O Snow detecta o Vanguard pelo próprio arquivo de instalação da Riot (`vanguard: true`).
+
+## Snow Health
+Nota de saúde de 0 a 100, **somente leitura** e sem drivers. Ela cobre:
+- **Discos**: saúde, desgaste do SSD, horas ligado, erros não corrigidos, temperatura e previsão de falha (SMART exposto pelo Windows).
+- **Estabilidade** nos últimos 30 dias: telas azuis, resets do driver de vídeo (TDR), erros de hardware (WHEA), desligamentos inesperados e apps que travam.
+- **Dispositivos** com erro e idade do driver de vídeo.
+- **Espaço** em disco, **bateria** (desgaste e ciclos) e reinicialização pendente.
+
+Cada achado vem com "O que fazer".
+
+## Snow Monitor
+- **Uso em tempo real** pelos contadores do Windows (PDH): CPU, núcleo mais ocupado, GPU 3D, VRAM e RAM.
+- **FPS, 1% low e frametime** ao vivo pelo [Intel PresentMon](https://github.com/GameTechDev/PresentMon) (eventos ETW, sem injetar nada no jogo).
+- **Gargalo** a cada segundo (GPU, CPU, teto de FPS ou memória) e o % do tempo em cada um na sessão.
+- **Comparar antes e depois**: abre duas capturas `.csv` (Snow Bench ou sessões do Monitor) e mostra a diferença.
+
+Inspirações: [ResetExplode](https://github.com/GustavoReset/ResetExplode) (MIT) e [WinForge](https://github.com/guilhermehenn/winforge) (GPL-3.0, só ideias; nenhum código copiado). Diferente deles, o Snow não usa drivers de kernel (nem PawnIO/WinRing0), para conviver com o Riot Vanguard.
 
 ## Perfis do Windows
 
@@ -126,14 +143,15 @@ Os runners do GitHub são Windows Server (mesmo kernel do Windows 10/11 desktop,
 | ![Diagnóstico](docs/screenshots/1-diagnostico-dark.png) | ![Diagnóstico](docs/screenshots/1-diagnostico-light.png) |
 | ![Otimizar](docs/screenshots/2-otimizar-dark.png) | ![Otimizar](docs/screenshots/2-otimizar-light.png) |
 | ![Jogos](docs/screenshots/3-jogos-dark.png) | ![Jogos](docs/screenshots/3-jogos-light.png) |
-| ![Snow Health](docs/screenshots/5-health-dark.png) | ![Restaurar](docs/screenshots/7-restaurar-dark.png) |
+| ![Snow Health](docs/screenshots/5-health-dark.png) | ![Snow Monitor](docs/screenshots/6-monitor-dark.png) |
 
 > As capturas vêm de um runner sem GPU física; num PC real, os cartões mostram sua CPU, GPU, RAM e discos.
 
 ## Roadmap
 - ~~Otimização por jogo (FPS Médio / FPS Alto)~~ ✅ v0.2: Fortnite, League of Legends, Valorant. Próximos: CS2, Apex Legends, Minecraft, Rocket League.
-- **Snow Health**: saúde dos discos (SMART), bateria, confiabilidade do Windows, drivers, nota de saúde.
-- **Snow Monitor**: uso em tempo real, FPS/frametime por ETW, sessões de jogo e gargalos, sem drivers.
+- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4
+- Overlay no jogo (janela transparente, sem injeção) e histórico de sessões.
+- Mais jogos: CS2, Apex Legends, Minecraft, Rocket League.
 - Perfis de driver (NVIDIA/AMD) por jogo.
 - Agendamento: reaplicar após grandes atualizações do Windows.
 
