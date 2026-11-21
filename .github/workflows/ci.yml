@@ -54,6 +54,14 @@ jobs:
       - name: Testes
         run: dotnet run --project tests/Snow.Tests -c Release --no-build
 
+      - name: Script snow-bench.ps1 (sintaxe no Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path tools/snow-bench.ps1), [ref]$null, [ref]$errors)
+          if ($errors) { $errors | ForEach-Object { Write-Host $_ }; throw "snow-bench.ps1 tem erros de sintaxe" }
+          if ((Get-Content tools/snow-bench.ps1 -Encoding Byte -TotalCount 3) -join ',' -ne '239,187,191') { throw "snow-bench.ps1 precisa de BOM UTF-8 para o PowerShell 5.1" }
+
       - name: Versão do SO
         shell: pwsh
         run: |
@@ -201,7 +209,7 @@ jobs:
             $common = @('-c','Release','-r',$rid,'--self-contained','true','-p:PublishSingleFile=true','-p:IncludeNativeLibrariesForSelfExtract=true','-p:EnableCompressionInSingleFile=true','-p:DebugType=none','-o',$out)
             dotnet publish src/Snow.App @common
             dotnet publish src/Snow.Cli @common
-            Copy-Item README.md, LICENSE $out
+            Copy-Item README.md, LICENSE, tools/snow-bench.ps1 $out
             Compress-Archive -Path "$out/*" -DestinationPath "dist/Snow-$rid.zip" -Force
           }
           Get-ChildItem dist -Recurse -Include *.exe,*.zip | Select-Object FullName, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}

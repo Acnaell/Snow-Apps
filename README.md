@@ -100,6 +100,16 @@ snow-cli games [--preset alto|medio]     # jogos, pontos de melhora e prévia
 snow-cli game-apply --id riot:league_of_legends --preset alto
 ```
 
+## Medir antes e depois (Snow Bench)
+O `snow-bench.ps1`, incluído no zip, mede FPS médio, 1% low, 0,1% low e engasgos com o [Intel PresentMon](https://github.com/GameTechDev/PresentMon). O PresentMon lê os eventos de quadros do Windows (ETW) e não injeta nada no jogo.
+```powershell
+# PowerShell como Administrador, com o jogo aberto na cena de teste:
+powershell -ExecutionPolicy Bypass -File .\snow-bench.ps1 -Game fortnite -Label antes
+# aplique a predefinição no Snow e repita a mesma cena:
+powershell -ExecutionPolicy Bypass -File .\snow-bench.ps1 -Game fortnite -Label depois
+```
+Os resultados ficam em `Documentos\SnowBench`.
+
 ## Compatibilidade e testes
 | Ambiente | Como é testado |
 |---|---|
