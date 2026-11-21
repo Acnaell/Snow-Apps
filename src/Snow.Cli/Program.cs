@@ -25,7 +25,8 @@ public static class Program
           snow-cli backups                              Lista as sessões de backup
           snow-cli startup                              Lista os itens de inicialização
           snow-cli purge-standby                        Esvazia a lista Standby da RAM
-          snow-cli health                               Snow Health: nota de saúde, discos, estabilidade, drivers
+          snow-cli health [--raw]                       Snow Health: nota de saúde, discos, estabilidade, drivers
+          snow-cli gpu                                  Fontes de VRAM (DXGI, registro, WMI) para diagnóstico
           snow-cli monitor [--seconds 30] [--game fortnite|lol|valorant]   Snow Monitor: uso, FPS e gargalo
           snow-cli compare antes.csv depois.csv          Compara duas capturas do PresentMon/Snow Bench
           snow-cli games [--preset alto|medio]          Jogos instalados, pontos de melhora e prévia da predefinição
@@ -68,7 +69,8 @@ public static class Program
                 "startup" => Startup(),
                 "purge-standby" => RequireAdmin() ?? PurgeStandby(),
                 "games" => Games(opts),
-                "health" => Health(),
+                "health" => Health(opts),
+                "gpu" => Gpu(),
                 "monitor" => Monitor(opts),
                 "compare" => Compare(args.Skip(1).Where(a => !a.StartsWith("--")).ToArray()),
                 "game-apply" => GameApply(opts),
@@ -269,8 +271,29 @@ public static class Program
         return session.Tweaks.Any(t => t.Status == TweakStatus.Failed) ? 4 : 0;
     }
 
-    private static int Health()
+    private static int Gpu()
     {
+        Console.WriteLine("== DXGI (mesma fonte do Gerenciador de Tarefas) ==");
+        var dx = Snow.Platform.Native.Dxgi.Enumerate();
+        foreach (var a in dx)
+            Console.WriteLine($"  {a.Description} · VEN_{a.VendorId:X4}&DEV_{a.DeviceId:X4} · dedicada {a.DedicatedVideoMemory / 1048576.0:N0} MB{(a.IsSoftware ? " · software" : "")}");
+        if (dx.Count == 0) Console.WriteLine("  (nenhum adaptador)");
+        var hw = HardwareProfiler.Collect();
+        Console.WriteLine("== Snow (valor final) ==");
+        foreach (var g in hw.Gpus)
+            Console.WriteLine($"  {g.Name} · {g.PnpDeviceId} · VRAM {g.VramBytes / 1048576.0:N0} MB");
+        foreach (var w in hw.CollectionWarnings) Console.WriteLine($"  (aviso) {w}");
+        return dx.Count > 0 ? 0 : 6;
+    }
+
+    private static int Health(Dictionary<string, string?> o)
+    {
+        if (o.ContainsKey("raw"))
+        {
+            var data = Snow.Platform.Health.HealthCollector.Collect();
+            Console.WriteLine(JsonSerializer.Serialize(data, JsonOpts));
+            return 0;
+        }
         var r = Snow.Platform.Health.HealthCollector.Run();
         Console.WriteLine($"══════════ SNOW HEALTH: {r.Score}/100 ({r.Verdict}) ══════════");
         foreach (var g in r.Items.GroupBy(i => i.Category))

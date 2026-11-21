@@ -135,7 +135,8 @@ public sealed class MainViewModel : ObservableObject
             foreach (var p in Profiles) p.IsRecommended = p.Profile == rec.Profile;
             SelectedProfile = Profiles.First(p => p.Profile == rec.Profile);
             BuildPlan(rec.Profile);
-            _log.Info($"Diagnóstico concluído: {_hw.Cpu.Name} · {_hw.PrimaryGpu?.Name} · {_hw.Os.FriendlyName}");
+            _log.Info($"Diagnóstico concluído: {_hw.Cpu.Name} · {_hw.PrimaryGpu?.Name} ({Report.Gb(_hw.PrimaryGpu?.VramBytes ?? 0)}) · {_hw.Os.FriendlyName}");
+            foreach (var w in _hw.CollectionWarnings) _log.Info("Aviso de coleta: " + w);
             BusyText = "Procurando jogos instalados…";
             await Games.LoadAsync(_hw);
             BusyText = "Snow Health: lendo discos e registros de eventos…";
