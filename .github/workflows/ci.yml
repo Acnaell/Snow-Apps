@@ -238,6 +238,10 @@ jobs:
             Compress-Archive -Path "$out/*" -DestinationPath "dist/Snow-$rid.zip" -Force
           }
           Get-ChildItem dist -Recurse -Include *.exe,*.zip | Select-Object FullName, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
+          # SHA256SUMS.txt: o atualizador do Snow confere o pacote baixado contra este arquivo
+          Get-ChildItem dist/*.zip | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
+            Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          Get-Content dist/SHA256SUMS.txt
           # Confere a arquitetura gravada no cabeçalho PE de cada exe (0x8664 x64, 0x14c x86, 0xAA64 ARM64)
           $expected = @{ 'win-x64' = 0x8664; 'win-x86' = 0x14c; 'win-arm64' = 0xAA64 }
           foreach ($rid in $expected.Keys) {
@@ -283,6 +287,31 @@ jobs:
           $p = Launch dist/Snow-win-x86/Snow.exe "$pwd\pubscreens86"
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "Snow.exe x86 travou" }
           if ($p.ExitCode -ne 0 -or (Get-ChildItem pubscreens86 -Filter *.png).Count -lt 5) { throw "Snow.exe x86 falhou ($($p.ExitCode))" }
+      - name: Atualizador de ponta a ponta (pacote real + SHA256SUMS)
+        shell: pwsh
+        run: |
+          $app = "$env:RUNNER_TEMP\app-antigo"
+          Copy-Item dist/Snow-win-x64 $app -Recurse
+          $zip = (Resolve-Path dist/Snow-win-x64.zip).Path
+          $sums = (Resolve-Path dist/SHA256SUMS.txt).Path
+          @{ tag_name = 'v99.0.0'; html_url = 'x'; body = 'teste'; assets = @(
+               @{ name = 'Snow-win-x64.zip'; size = 1; browser_download_url = $zip },
+               @{ name = 'SHA256SUMS.txt'; size = 1; browser_download_url = $sums }) } |
+            ConvertTo-Json -Depth 4 | Set-Content "$env:RUNNER_TEMP\feed.json"
+          $env:SNOW_UPDATE_FEED = "$env:RUNNER_TEMP\feed.json"
+          & "$app\snow-cli.exe" update --yes
+          if ($LASTEXITCODE -ne 0) { throw "update falhou" }
+          if (-not (Test-Path "$app\snow-cli.exe.old")) { throw "não criou o backup .old" }
+          & "$app\snow-cli.exe" version
+          if ($LASTEXITCODE -ne 0) { throw "a versão instalada pelo atualizador não roda" }
+          # SHA errado precisa ser recusado
+          "0000000000000000000000000000000000000000000000000000000000000000  Snow-win-x64.zip" | Set-Content $sums
+          & "$app\snow-cli.exe" update --yes
+          if ($LASTEXITCODE -eq 0) { throw "aceitou pacote com SHA-256 errado" }
+          Get-ChildItem dist/*.zip | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
+            Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          Write-Host "OK: atualiza com pacote verificado e recusa SHA-256 errado"
+
       - uses: actions/upload-artifact@v4
         with:
           name: Snow-executaveis
@@ -294,11 +323,14 @@ jobs:
           tag_name: ${{ inputs.release_tag || github.ref_name }}
           name: Snow ${{ inputs.release_tag || github.ref_name }}
           target_commitish: ${{ github.sha }}
-          files: dist/*.zip
+          files: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
           generate_release_notes: true
           body: |
             ## Snow Game Optimizer
             Baixe o `.zip` da arquitetura do seu Windows (veja em **Configurações → Sistema → Sobre → Tipo de sistema**): **x64** para "sistema operacional de 64 bits, processador baseado em x64", **x86** para "sistema operacional de 32 bits", **ARM64** para Snapdragon/ARM, extraia e execute **Snow.exe** (o Windows pedirá permissão de Administrador).
             Os executáveis são autocontidos: não precisa instalar o .NET. `snow-cli.exe` é a versão de linha de comando.
+            A partir da v0.5.0, o Snow se atualiza sozinho (botão "Atualizar agora" na barra lateral), conferindo o SHA-256 de cada pacote.
 
             Testado no CI em Windows build 20348 (família Windows 10) e 26100 (Windows 11 24H2).

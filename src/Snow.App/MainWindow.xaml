@@ -26,6 +26,13 @@
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom">
+                    <Border Margin="0,0,0,10" Padding="12,10" CornerRadius="10" Background="{DynamicResource AccentBgBrush}"
+                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolVis}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding UpdateText}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                            <Button Style="{StaticResource PrimaryButton}" Command="{Binding UpdateCommand}" Content="Atualizar agora" Margin="0,8,0,0" Padding="12,6"/>
+                        </StackPanel>
+                    </Border>
                     <Border Style="{StaticResource Badge}" Margin="0,0,0,10" HorizontalAlignment="Left"
                             Background="{DynamicResource GoodBgBrush}" Visibility="{Binding IsAdmin, Converter={StaticResource BoolVis}}">
                         <TextBlock Text="● Administrador" FontSize="11" Foreground="{DynamicResource GoodBrush}"/>
@@ -36,9 +43,15 @@
                             <TextBlock Text="{Binding ThemeLabel}" Margin="10,0,0,0"/>
                         </StackPanel>
                     </Button>
-                    <TextBlock Margin="4,12,0,0" Style="{StaticResource Caption}">
-                        <Run Text="{Binding Version, Mode=OneWay}"/><Run Text=" · por Thiago Neves"/>
-                    </TextBlock>
+                    <DockPanel Margin="4,10,0,0">
+                        <Button DockPanel.Dock="Right" Command="{Binding CheckUpdatesCommand}" Padding="6,2" FontSize="11" ToolTip="Verificar atualizações"
+                                BorderThickness="0" Background="Transparent">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE895;" FontSize="12"/>
+                        </Button>
+                        <TextBlock Style="{StaticResource Caption}" VerticalAlignment="Center">
+                            <Run Text="{Binding Version, Mode=OneWay}"/><Run Text=" · por Thiago Neves"/>
+                        </TextBlock>
+                    </DockPanel>
                 </StackPanel>
 
                 <ScrollViewer VerticalScrollBarVisibility="Auto">

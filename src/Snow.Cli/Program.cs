@@ -27,6 +27,7 @@ public static class Program
           snow-cli purge-standby                        Esvazia a lista Standby da RAM
           snow-cli health [--raw]                       Snow Health: nota de saúde, discos, estabilidade, drivers
           snow-cli gpu                                  Fontes de VRAM (DXGI, registro, WMI) para diagnóstico
+          snow-cli update [--check] [--yes]             Verifica/instala a versão mais nova (SHA-256 conferido)
           snow-cli monitor [--seconds 30] [--game fortnite|lol|valorant]   Snow Monitor: uso, FPS e gargalo
           snow-cli compare antes.csv depois.csv          Compara duas capturas do PresentMon/Snow Bench
           snow-cli games [--preset alto|medio]          Jogos instalados, pontos de melhora e prévia da predefinição
@@ -71,6 +72,7 @@ public static class Program
                 "games" => Games(opts),
                 "health" => Health(opts),
                 "gpu" => Gpu(),
+                "update" => RequireAdmin() ?? Update(opts),
                 "monitor" => Monitor(opts),
                 "compare" => Compare(args.Skip(1).Where(a => !a.StartsWith("--")).ToArray()),
                 "game-apply" => GameApply(opts),
@@ -269,6 +271,25 @@ public static class Program
         var session = svc.Apply(report, plan);
         PrintSession(session);
         return session.Tweaks.Any(t => t.Status == TweakStatus.Failed) ? 4 : 0;
+    }
+
+    private static int Update(Dictionary<string, string?> o)
+    {
+        var svc = new Snow.Platform.Updates.UpdateService(new ConsoleLog());
+        svc.CleanupOldFiles();
+        var check = svc.CheckAsync().GetAwaiter().GetResult();
+        if (check.Error is not null) { Console.Error.WriteLine($"Não foi possível verificar: {check.Error}"); return 7; }
+        Console.WriteLine($"Instalada: {check.Current.ToString(3)} · Disponível: {check.Latest?.Tag ?? "-"} · Pacote: {check.Asset?.Name ?? "nenhum para " + Snow.Platform.Updates.UpdateService.Rid}");
+        if (!check.Available) { Console.WriteLine("Você já está na versão mais recente."); return 0; }
+        if (o.ContainsKey("check")) return 0;
+        if (!o.ContainsKey("yes"))
+        {
+            Console.Write("Instalar agora? [s/N] ");
+            if (!(Console.ReadLine() ?? "").Trim().StartsWith("s", StringComparison.OrdinalIgnoreCase)) return 0;
+        }
+        var path = svc.InstallAsync(check, new Progress<string>(Console.WriteLine)).GetAwaiter().GetResult();
+        Console.WriteLine($"Atualizado. Abra {path} para usar a nova versão.");
+        return 0;
     }
 
     private static int Gpu()

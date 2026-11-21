@@ -47,6 +47,11 @@ public sealed class MainViewModel : ObservableObject
         Games = new GamesViewModel(_service, _log, LoadBackups);
         Health = new HealthViewModel(_log);
         Monitor = new MonitorViewModel(_log);
+        _updater = new Snow.Platform.Updates.UpdateService(_log);
+        _updater.CleanupOldFiles();
+        UpdateCommand = new RelayCommand(async () => await InstallUpdateAsync(), () => UpdateAvailable && !IsBusy);
+        CheckUpdatesCommand = new RelayCommand(async () => await CheckUpdatesAsync(manual: true), () => !IsBusy);
+        _ = CheckUpdatesAsync(manual: false);
         Profiles = new ObservableCollection<ProfileCardViewModel>(ProfileCardViewModel.All());
         LastResult.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasResult));
         IsAdmin = Elevation.IsAdministrator();
@@ -71,6 +76,51 @@ public sealed class MainViewModel : ObservableObject
     public GamesViewModel Games { get; }
     public HealthViewModel Health { get; }
     public MonitorViewModel Monitor { get; }
+
+    // ───────────── Atualizações ─────────────
+    private readonly Snow.Platform.Updates.UpdateService _updater;
+    private Snow.Platform.Updates.UpdateCheck? _update;
+    public ICommand UpdateCommand { get; }
+    public ICommand CheckUpdatesCommand { get; }
+    public bool UpdateAvailable => _update?.Available == true;
+    public string UpdateText => _update?.Latest is { } l ? $"Snow {l.Tag} disponível" : "";
+
+    private async Task CheckUpdatesAsync(bool manual)
+    {
+        if (App.Options.ScreenshotDir is not null && !manual) return; // capturas do CI não dependem da rede
+        _update = await _updater.CheckAsync();
+        OnPropertyChanged(nameof(UpdateAvailable));
+        OnPropertyChanged(nameof(UpdateText));
+        CommandManager.InvalidateRequerySuggested();
+        if (!manual) return;
+        if (_update.Error is not null)
+            MessageBox.Show($"Não foi possível verificar agora: {_update.Error}", "Snow", MessageBoxButton.OK, MessageBoxImage.Warning);
+        else if (!_update.Available)
+            MessageBox.Show($"Você já está na versão mais recente ({Version}).", "Snow", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private async Task InstallUpdateAsync()
+    {
+        if (_update is not { Available: true, Latest: { } latest }) return;
+        var notes = latest.Notes.Length > 600 ? latest.Notes[..600] + "…" : latest.Notes;
+        if (MessageBox.Show($"Atualizar de {Version} para {latest.Tag}?\n\n{notes}\n\nO Snow baixa o pacote oficial do GitHub, confere o SHA-256 e reabre sozinho. Seus backups e configurações são mantidos.",
+                "Snow — atualização", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        IsBusy = true; Progress = 0;
+        try
+        {
+            var progress = new Progress<string>(t => BusyText = t);
+            var exe = await _updater.InstallAsync(_update, progress);
+            BusyText = "Reabrindo o Snow…";
+            Snow.Platform.Updates.UpdateService.Relaunch(exe);
+            Application.Current.Shutdown();
+        }
+        catch (Exception e)
+        {
+            _log.Error("Atualização falhou: " + e);
+            MessageBox.Show($"A atualização não foi concluída e nada foi alterado:\n{e.Message}", "Snow", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally { IsBusy = false; BusyText = ""; }
+    }
 
     // ───────────── Diagnóstico ─────────────
     public ObservableCollection<SpecCard> Specs { get; } = [];
