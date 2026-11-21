@@ -135,14 +135,14 @@
                             <UniformGrid Columns="2" Margin="0,0,0,8">
                                 <RadioButton GroupName="preset" IsChecked="{Binding IsMedio, Mode=TwoWay}" Style="{StaticResource NavButton}" Margin="0,0,6,0">
                                     <StackPanel>
-                                        <TextBlock Text="FPS Médio" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                        <TextBlock Text="Qualidade e estabilidade" Style="{StaticResource Caption}"/>
+                                        <TextBlock Text="{Binding MedioTitle}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                        <TextBlock Text="{Binding MedioCaption}" Style="{StaticResource Caption}"/>
                                     </StackPanel>
                                 </RadioButton>
                                 <RadioButton GroupName="preset" IsChecked="{Binding IsAlto, Mode=TwoWay}" Style="{StaticResource NavButton}" Margin="6,0,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="FPS Alto" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                        <TextBlock Text="Competitivo · menor latência" Style="{StaticResource Caption}"/>
+                                        <TextBlock Text="{Binding AltoTitle}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                        <TextBlock Text="{Binding AltoCaption}" Style="{StaticResource Caption}"/>
                                     </StackPanel>
                                 </RadioButton>
                             </UniformGrid>

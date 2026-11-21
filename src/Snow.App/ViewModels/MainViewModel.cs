@@ -181,6 +181,7 @@ public sealed class MainViewModel : ObservableObject
         {
             _hw = await Task.Run(HardwareProfiler.Collect);
             FillDiagnostics(_hw);
+            Monitor.RefreshHz = _hw.MonitorRefreshHz;
             var rec = RecommendationEngine.Recommend(_hw);
             foreach (var p in Profiles) p.IsRecommended = p.Profile == rec.Profile;
             SelectedProfile = Profiles.First(p => p.Profile == rec.Profile);

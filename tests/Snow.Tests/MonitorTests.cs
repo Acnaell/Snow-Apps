@@ -25,10 +25,14 @@ public static class MonitorTests
 
     [Test] public static void BottleneckClassification()
     {
-        UsageSample S(double? gpu, double? core, double ram = 50, double? fps = 120) => new(DateTime.Now, 40, core, gpu, 3, ram, fps, null);
+        UsageSample S(double? gpu, double? core, double ram = 50, double? fps = 120, double? cap = null) => new(DateTime.Now, 40, core, gpu, 3, ram, fps, null, cap);
         Assert.Equal(Bottleneck.Gpu, BottleneckClassifier.Classify(S(99, 60)));
         Assert.Equal(Bottleneck.Cpu, BottleneckClassifier.Classify(S(60, 97)));
-        Assert.Equal(Bottleneck.LimiteFps, BottleneckClassifier.Classify(S(55, 50)));
+        Assert.Equal(Bottleneck.LimiteFps, BottleneckClassifier.Classify(S(55, 50, fps: 164, cap: 165)));
+        // Fortnite real no Xeon E5-2620 v3 (11:02:20): 136 FPS com limite 165, GPU 70%, núcleo 74% → CPU, não "teto de FPS"
+        Assert.Equal(Bottleneck.Cpu, BottleneckClassifier.Classify(S(69.6, 74.2, fps: 136, cap: 165)));
+        Assert.Equal(Bottleneck.Cpu, BottleneckClassifier.Classify(S(55, 50)), "sem limite conhecido e GPU folgada");
+        Assert.Equal(Bottleneck.Equilibrado, BottleneckClassifier.Classify(S(88, 60)));
         Assert.Equal(Bottleneck.Memoria, BottleneckClassifier.Classify(S(99, 99, ram: 95)));
         Assert.Equal(Bottleneck.Desconhecido, BottleneckClassifier.Classify(S(null, 50)), "sem contador de GPU (VM)");
         Assert.Equal(Bottleneck.SemCarga, BottleneckClassifier.Classify(S(10, 12, fps: null)), "PC parado não é 'equilibrado'");

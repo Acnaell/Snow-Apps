@@ -125,6 +125,11 @@ jobs:
           @{ AppName = 'Fortnite'; DisplayName = 'Fortnite'; InstallLocation = ("$games\Fortnite" -replace '\\','/'); bIsIncompleteInstall = $false } |
             ConvertTo-Json | Set-Content "$env:ProgramData\Epic\EpicGamesLauncher\Data\Manifests\fortnite.item"
           Copy-Item "$fx/fortnite_GameUserSettings.ini" "$env:LOCALAPPDATA\FortniteGame\Saved\Config\WindowsClient\GameUserSettings.ini"
+          # OBS Studio: perfil ativo pelo user.ini (OBS 31+)
+          $obs = "$env:APPDATA\obs-studio"
+          New-Item -ItemType Directory -Force "$obs\basic\profiles\Sem_T_tulo" | Out-Null
+          "[Basic]`r`nProfile=Sem titulo`r`nProfileDir=Sem_T_tulo" | Set-Content "$obs\user.ini"
+          Copy-Item "$fx/obs_basic.ini" "$obs\basic\profiles\Sem_T_tulo\basic.ini"
 
       - name: Jogos — diagnóstico, aplicar e restaurar (arquivo volta idêntico)
         shell: pwsh
@@ -133,20 +138,25 @@ jobs:
           & $cli games
           if ($LASTEXITCODE -ne 0) { throw "games falhou" }
           $out = & $cli games | Out-String
-          foreach ($g in 'Fortnite','League of Legends','VALORANT','Riot Vanguard','VSync ligado','multithread') {
+          foreach ($g in 'Fortnite','League of Legends','VALORANT','Riot Vanguard','VSync ligado','multithread','OBS Studio') {
             if ($out -notmatch [regex]::Escape($g)) { throw "esperava '$g' na saída de games" }
           }
           $fn = "$env:LOCALAPPDATA\FortniteGame\Saved\Config\WindowsClient\GameUserSettings.ini"
           $lol = "$env:RUNNER_TEMP\games\League of Legends\Config\game.cfg"
+          $obsIni = "$env:APPDATA\obs-studio\basic\profiles\Sem_T_tulo\basic.ini"
           $before = (Get-FileHash $fn).Hash + (Get-FileHash $lol).Hash
-          foreach ($id in 'epic:fortnite','riot:league_of_legends') {
+          $obsBefore = (Get-FileHash $obsIni).Hash
+          foreach ($id in 'epic:fortnite','riot:league_of_legends','app:obs') {
             & $cli game-apply --id $id --preset alto --yes
             if ($LASTEXITCODE -ne 0) { throw "game-apply $id falhou" }
           }
           if (((Get-FileHash $fn).Hash + (Get-FileHash $lol).Hash) -eq $before) { throw "nada mudou nos arquivos dos jogos" }
+          if ((Get-FileHash $obsIni).Hash -eq $obsBefore) { throw "nada mudou no basic.ini do OBS" }
+          Get-Content $obsIni
           & $cli game-apply --id riot:valorant --preset alto --yes   # guiado: não deve editar
           & $cli restore --all
           if (((Get-FileHash $fn).Hash + (Get-FileHash $lol).Hash) -ne $before) { throw "arquivos dos jogos não voltaram idênticos" }
+          if ((Get-FileHash $obsIni).Hash -ne $obsBefore) { throw "basic.ini do OBS não voltou idêntico" }
           Write-Host "OK: aplicar → restaurar devolveu os arquivos byte a byte"
 
       - name: Plano de cada perfil

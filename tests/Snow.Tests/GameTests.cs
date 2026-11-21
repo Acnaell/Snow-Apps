@@ -252,7 +252,7 @@ public static class ScannerTests
         Directory.CreateDirectory(gameDir);
         File.WriteAllText(Path.Combine(epicDir, "a.item"), $$"""{"AppName":"Jogo","DisplayName":"Jogo Epic","InstallLocation":"{{gameDir.Replace("\\", "/")}}"}""");
 
-        var scanner = new GameScanner(new FakeRegistry(), pd);
+        var scanner = new GameScanner(new FakeRegistry(), pd, appData: pd);
         var games = scanner.Scan();
         Assert.Equal(2, games.Count, string.Join(", ", games.Select(g => g.Id)));
         var lol = games.First(g => g.Id == LeagueProfile.Id);

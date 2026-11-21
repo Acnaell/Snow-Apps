@@ -33,9 +33,10 @@ public sealed class ProcessProbe : IProcessProbe
 }
 
 /// <summary>Identifica jogos instalados em Steam, Epic Games e Riot Client, sem precisar dos launchers abertos.</summary>
-public sealed partial class GameScanner(IRegistryStore registry, string? programData = null)
+public sealed partial class GameScanner(IRegistryStore registry, string? programData = null, string? appData = null)
 {
     private readonly string _programData = programData ?? Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+    private readonly string _appData = appData ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
     public IReadOnlyList<InstalledGame> Scan()
     {
@@ -43,6 +44,7 @@ public sealed partial class GameScanner(IRegistryStore registry, string? program
         games.AddRange(Safe(ScanSteam));
         games.AddRange(Safe(ScanEpic));
         games.AddRange(Safe(ScanRiot));
+        games.AddRange(Safe(ScanApps));
         return games
             .Where(g => Directory.Exists(g.InstallDir))
             .GroupBy(g => g.Id).Select(g => g.First())
@@ -126,6 +128,18 @@ public sealed partial class GameScanner(IRegistryStore registry, string? program
             AntiCheat: app.Equals("Fortnite", StringComparison.OrdinalIgnoreCase) ? "Easy Anti-Cheat / BattlEye" : null);
     }
 
+    // ───────── Apps que disputam recursos com o jogo (OBS) ─────────
+    public IEnumerable<InstalledGame> ScanApps()
+    {
+        var obsConfig = Path.Combine(_appData, "obs-studio");
+        if (!Directory.Exists(Path.Combine(obsConfig, "basic", "profiles"))) yield break;
+        var install = registry.Get(Core.Tweaks.RegistryHive.LocalMachine, @"SOFTWARE\OBS Studio", "")?.Data;
+        var pf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "obs-studio");
+        var dir = !string.IsNullOrWhiteSpace(install) && Directory.Exists(install) ? install
+                : Directory.Exists(pf) ? pf : obsConfig; // instalação portátil: usa a pasta de configuração
+        yield return new InstalledGame(ObsProfile.Id, "OBS Studio", GameStore.Outro, Native(dir));
+    }
+
     // ───────── Riot: %ProgramData%\Riot Games\Metadata\<produto>.live\<produto>.live.product_settings.yaml ─────────
     [GeneratedRegex("^product_install_full_path:\\s*\"?([^\"\\r\\n]+)\"?", RegexOptions.Multiline)] private static partial Regex RiotPath();
 
@@ -191,7 +205,10 @@ public sealed class GameService(GameScanner scanner, IProcessProbe processes, Op
             try { findings.AddRange(profile.Analyze(ctx)); }
             catch (Exception e) { findings.Add(new(FindingLevel.Info, "Não foi possível ler a configuração", e.Message)); }
         }
-        findings.AddRange(GenericGameAdvisor.Analyze(game, hw, running));
+        if (!game.Id.StartsWith("app:", StringComparison.Ordinal)) // disco/GPU híbrida não se aplicam ao OBS
+            findings.AddRange(GenericGameAdvisor.Analyze(game, hw, running));
+        else if (running)
+            findings.Add(new(FindingLevel.Info, "Aberto agora", "Feche o programa para aplicar a predefinição."));
         return new GameReport(game, profile, ctx, findings);
     }
 

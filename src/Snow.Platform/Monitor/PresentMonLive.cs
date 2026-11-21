@@ -39,10 +39,21 @@ public sealed class PresentMonLive : IDisposable
         return null;
     }
 
+    public const string SessionPrefix = "SnowMonitor";
+    private readonly string _session;
+    private readonly DateTime _started = DateTime.UtcNow;
+
+    /// <summary>
+    /// Sessões ETW sobrevivem ao PresentMon quando ele é encerrado à força. Se a sessão anterior ficou
+    /// aberta, a próxima medição não recebe nenhum quadro (aconteceu na 2ª sessão de Fortnite do Thiago).
+    /// Por isso: nome único por medição + limpeza das sessões "SnowMonitor*" antes e depois.
+    /// </summary>
     public PresentMonLive(string presentMonExe, string processName)
     {
+        StopOrphanSessions();
+        _session = $"{SessionPrefix}_{Environment.ProcessId}_{DateTime.UtcNow:HHmmss}";
         var psi = new ProcessStartInfo(presentMonExe,
-            $"--process_name \"{processName}\" --output_stdout --v2_metrics --session_name SnowMonitor")
+            $"--process_name \"{processName}\" --output_stdout --v2_metrics --session_name {_session}")
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -76,6 +87,38 @@ public sealed class PresentMonLive : IDisposable
         }
     }
 
+    /// <summary>Sem quadros depois de 15 s com o PresentMon rodando: o jogo não está aberto ou a captura falhou.</summary>
+    public bool NoFramesYet { get { lock (_lock) return _all.Count == 0 && (DateTime.UtcNow - _started).TotalSeconds > 15; } }
+
+    /// <summary>Nomes de sessões ETW do Snow em "logman query -ets" (puro, testável).</summary>
+    public static IReadOnlyList<string> ParseSnowSessions(string logmanOutput) =>
+        logmanOutput.Split('\n')
+            .Select(l => l.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "")
+            .Where(n => n.StartsWith(SessionPrefix, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+    private static string Logman(string args)
+    {
+        try
+        {
+            using var p = Process.Start(new ProcessStartInfo("logman.exe", args)
+            {
+                UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
+            });
+            if (p is null) return "";
+            var output = p.StandardOutput.ReadToEnd();
+            p.WaitForExit(5000);
+            return output;
+        }
+        catch { return ""; }
+    }
+
+    public static void StopOrphanSessions()
+    {
+        foreach (var name in ParseSnowSessions(Logman("query -ets")))
+            Logman($"stop \"{name}\" -ets");
+    }
+
     /// <summary>FPS do último segundo e 1% low dos últimos 30 s.</summary>
     public (double? fps, double? low1) Current()
     {
@@ -94,5 +137,6 @@ public sealed class PresentMonLive : IDisposable
     {
         try { if (!_proc.HasExited) _proc.Kill(entireProcessTree: true); } catch { }
         _proc.Dispose();
+        Logman($"stop \"{_session}\" -ets"); // Kill não fecha a sessão ETW
     }
 }

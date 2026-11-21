@@ -35,25 +35,34 @@ public sealed record UsageSample(
     double? VramUsedGb,
     double RamUsedPercent,
     double? Fps,
-    double? Low1);
+    double? Low1,
+    double? FpsCap = null);
 
 public static class BottleneckClassifier
 {
     /// <summary>
     /// Heurística por amostra:
-    ///  • GPU ≥ 95% → limitado pela GPU (o normal num jogo pesado);
-    ///  • núcleo mais ocupado ≥ 90% com GPU &lt; 85% → limitado pela CPU (thread principal do jogo);
-    ///  • RAM ≥ 92% → memória;
-    ///  • GPU e CPU folgadas com FPS estável → teto de FPS / VSync;
+    ///  • RAM ≥ 92% → memória; GPU ≥ 95% → limitado pela GPU (o normal num jogo pesado);
+    ///  • com FPS medido: FPS colado no limite conhecido (do jogo ou do monitor) → teto de FPS;
+    ///    senão, GPU &lt; 85% → limitado pela CPU. O % do núcleo mais ocupado quase nunca chega a 100%
+    ///    porque o Windows troca a thread principal do jogo de núcleo várias vezes por segundo
+    ///    (visto num Xeon de 12 threads: núcleo em ~75% com o jogo preso no processador);
+    ///  • sem FPS: núcleo ≥ 90% com GPU &lt; 85% → CPU; tudo folgado → sem carga.
     /// </summary>
     public static Bottleneck Classify(UsageSample s)
     {
         if (s.RamUsedPercent >= 92) return Bottleneck.Memoria;
         if (s.GpuPercent is >= 95) return Bottleneck.Gpu;
-        if (s.BusiestCorePercent is >= 90 && s.GpuPercent is < 85) return Bottleneck.Cpu;
-        if (s.GpuPercent is null || s.BusiestCorePercent is null) return Bottleneck.Desconhecido;
-        if (s.Fps is null && s.GpuPercent < 40 && s.BusiestCorePercent < 50) return Bottleneck.SemCarga;
-        if (s.Fps is > 0 && s.GpuPercent < 85 && s.BusiestCorePercent < 85) return Bottleneck.LimiteFps;
+        if (s.GpuPercent is null || s.BusiestCorePercent is null)
+            return s.BusiestCorePercent is >= 90 ? Bottleneck.Cpu : Bottleneck.Desconhecido;
+        if (s.Fps is > 0 and var fps)
+        {
+            if (s.FpsCap is > 0 and var cap && fps >= cap * 0.95 && fps <= cap * 1.05) return Bottleneck.LimiteFps;
+            if (s.GpuPercent < 85) return Bottleneck.Cpu;
+            return Bottleneck.Equilibrado;
+        }
+        if (s.BusiestCorePercent >= 90 && s.GpuPercent < 85) return Bottleneck.Cpu;
+        if (s.GpuPercent < 40 && s.BusiestCorePercent < 50) return Bottleneck.SemCarga;
         return Bottleneck.Equilibrado;
     }
 
@@ -71,7 +80,7 @@ public static class BottleneckClassifier
     public static string Advice(this Bottleneck b) => b switch
     {
         Bottleneck.Gpu => "A placa de vídeo é o limite: reduza resolução 3D, sombras e efeitos, ou use FSR/DLSS.",
-        Bottleneck.Cpu => "A thread principal do jogo é o limite: baixe distância de visão e densidade (NPCs, multidões), feche programas em segundo plano. Mais canais de memória ajudam muito aqui.",
+        Bottleneck.Cpu => "O processador (thread principal do jogo e memória) é o limite, com a GPU sobrando: baixar gráficos quase não muda o FPS. Ajuda: limitar o FPS num valor que o PC sustenta (frametime estável), fechar programas em segundo plano e, no hardware, mais canais de memória.",
         Bottleneck.LimiteFps => "O jogo está no limite de FPS que você definiu (ou VSync). Há folga de hardware.",
         Bottleneck.Memoria => "A RAM está quase cheia: feche navegadores e launchers antes de jogar.",
         Bottleneck.Equilibrado => "CPU e GPU com uso parecido, sem um limite claro.",

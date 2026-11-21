@@ -25,6 +25,10 @@ public sealed class MonitorViewModel : ObservableObject
     private PresentMonLive? _pm;
     private readonly List<UsageSample> _samples = [];
     private string? _compareBefore, _compareAfter;
+    private double? _fpsCap;
+
+    /// <summary>Taxa do monitor (vem do diagnóstico), usada como limite de FPS quando o jogo não tem um próprio.</summary>
+    public int RefreshHz { get; set; }
 
     public static string BenchDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SnowBench");
 
@@ -105,6 +109,7 @@ public sealed class MonitorViewModel : ObservableObject
             _samples.Clear();
             TimeShare.Clear(); OnPropertyChanged(nameof(HasSession));
             PresentMonPath = PresentMonLive.Find();
+            _fpsCap = FpsCapReader.ForGame(SelectedGame?.Key, RefreshHz);
             if (SelectedGame?.Process is { } proc && PresentMonPath is { } pmExe)
             {
                 _pm = new PresentMonLive(pmExe, proc);
@@ -129,7 +134,7 @@ public sealed class MonitorViewModel : ObservableObject
     {
         if (_pdh is null) return;
         var (fps, low) = _pm?.Current() ?? (null, null);
-        var s = _pdh.Sample(fps, low);
+        var s = _pdh.Sample(fps, low) with { FpsCap = _fpsCap };
         _samples.Add(s);
         Fps = fps?.ToString("0") ?? "—";
         Low1 = low?.ToString("0") ?? "—";
@@ -149,6 +154,8 @@ public sealed class MonitorViewModel : ObservableObject
         pts.Freeze();
         Chart = pts;
         if (_pm is { IsRunning: false }) Status = "O PresentMon parou: " + (_pm.LastError ?? "verifique se o jogo está aberto.");
+        else if (_pm is { NoFramesYet: true } && fps is null)
+            Status = $"Sem quadros de {SelectedGame?.Name} ainda. Se o jogo já está aberto, pare e inicie de novo a medição.";
     }
 
     private void Stop()

@@ -15,7 +15,7 @@ public sealed class GameItemViewModel(GameReport report) : ObservableObject
 {
     public GameReport Report { get; private set; } = report;
     public string Name => Report.Game.Name;
-    public string Store => Report.Game.Store switch { GameStore.Steam => "Steam", GameStore.Epic => "Epic Games", GameStore.Riot => "Riot", _ => "Outro" };
+    public string Store => Report.Game.Store switch { GameStore.Steam => "Steam", GameStore.Epic => "Epic Games", GameStore.Riot => "Riot", _ => Report.Game.Id.StartsWith("app:") ? "App de live" : "Outro" };
     public string InstallDir => Report.Game.InstallDir;
     public string? AntiCheat => Report.Game.AntiCheat;
     public bool HasAntiCheat => AntiCheat is not null;
@@ -130,6 +130,11 @@ public sealed class GamesViewModel : ObservableObject
     public bool HasChanges => Changes.Count > 0;
     public bool HasSteps => Steps.Count > 0;
     public bool HasPreset => Selected?.Report.Profile is not null;
+    private bool IsObs => Selected?.Report.Game.Id == ObsProfile.Id;
+    public string MedioTitle => IsObs ? "Live mais nítida" : "FPS Médio";
+    public string MedioCaption => IsObs ? "936p60 · codificador da placa" : "Qualidade e estabilidade";
+    public string AltoTitle => IsObs ? "Jogo em primeiro lugar" : "FPS Alto";
+    public string AltoCaption => IsObs ? "720p60 · mínimo de FPS perdido" : "Competitivo · menor latência";
     public int ChangeCount => Changes.Count(c => c.Changes);
 
     public async Task LoadAsync(HardwareProfile hw)
@@ -171,6 +176,8 @@ public sealed class GamesViewModel : ObservableObject
             foreach (var f in Selected.Report.Findings.OrderByDescending(f => f.Level)) Findings.Add(new FindingViewModel(f));
         OnPropertyChanged(nameof(IsGuided));
         OnPropertyChanged(nameof(HasPreset));
+        OnPropertyChanged(nameof(MedioTitle)); OnPropertyChanged(nameof(MedioCaption));
+        OnPropertyChanged(nameof(AltoTitle)); OnPropertyChanged(nameof(AltoCaption));
         BuildPreset();
     }
 

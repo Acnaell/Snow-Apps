@@ -380,5 +380,5 @@ public static class GenericGameAdvisor
 
 public static class GameProfiles
 {
-    public static IReadOnlyList<IGameProfile> All() => [new FortniteProfile(), new LeagueProfile(), new ValorantProfile()];
+    public static IReadOnlyList<IGameProfile> All() => [new FortniteProfile(), new LeagueProfile(), new ValorantProfile(), new ObsProfile()];
 }

@@ -29,6 +29,7 @@ O Snow identifica os jogos instalados (**Steam**, **Epic Games** e **Riot**), mo
 | Fortnite | Edita com backup | `GameUserSettings.ini`: modo Performance, resolução 3D, qualidades, VSync, limite de FPS = monitor, Reflex (NVIDIA) |
 | League of Legends | Edita com backup | `game.cfg`: só as opções gráficas que o LoL mantém locais (as sincronizadas com a conta ficam de fora) + VSync |
 | Valorant | Diagnóstico + passo a passo | Lê `RiotUserSettings.ini` (ex.: renderização multithread desligada) e orienta no menu; não edita porque as configurações são sincronizadas com a conta |
+| OBS Studio (live) | Edita com backup | `basic.ini` do perfil ativo: codificador da placa de vídeo (AMD AMF / NVENC / Quick Sync) no lugar do x264, 6000 kbps, saída 720p60 ("jogo em primeiro lugar") ou 936p60 ("live mais nítida"). No modo Avançado, orienta o codificador passo a passo |
 | Outros jogos | Diagnóstico básico | Instalação em HDD, notebook com duas GPUs, jogo aberto |
 
 Toda predefinição mostra uma prévia **"atual → novo"** com o motivo de cada opção, grava o valor original no backup e preserva o resto do arquivo byte a byte.
@@ -54,7 +55,8 @@ Cada achado vem com "O que fazer".
 ## Snow Monitor
 - **Uso em tempo real** pelos contadores do Windows (PDH): CPU, núcleo mais ocupado, GPU 3D, VRAM e RAM.
 - **FPS, 1% low e frametime** ao vivo pelo [Intel PresentMon](https://github.com/GameTechDev/PresentMon) (eventos ETW, sem injetar nada no jogo).
-- **Gargalo** a cada segundo (GPU, CPU, teto de FPS ou memória) e o % do tempo em cada um na sessão.
+- **Gargalo** a cada segundo (GPU, CPU, teto de FPS ou memória) e o % do tempo em cada um na sessão. "Teto de FPS" só quando o FPS está colado no limite real (o do Fortnite é lido do arquivo do jogo; nos outros, a taxa do monitor). GPU folgada abaixo do limite = processador.
+- Cada medição usa uma sessão ETW própria e fecha as sessões que sobraram de medições anteriores (antes, uma segunda medição podia ficar sem FPS).
 - **Comparar antes e depois**: abre duas capturas `.csv` (Snow Bench ou sessões do Monitor) e mostra a diferença.
 
 Inspirações: [ResetExplode](https://github.com/GustavoReset/ResetExplode) (MIT) e [WinForge](https://github.com/guilhermehenn/winforge) (GPL-3.0, só ideias; nenhum código copiado). Diferente deles, o Snow não usa drivers de kernel (nem PawnIO/WinRing0), para conviver com o Riot Vanguard.
@@ -149,7 +151,7 @@ Os runners do GitHub são Windows Server (mesmo kernel do Windows 10/11 desktop,
 
 ## Roadmap
 - ~~Otimização por jogo (FPS Médio / FPS Alto)~~ ✅ v0.2: Fortnite, League of Legends, Valorant. Próximos: CS2, Apex Legends, Minecraft, Rocket League.
-- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4
+- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4 · ~~Atualizador~~ ✅ v0.5 · ~~OBS Studio~~ ✅ v0.6
 - Overlay no jogo (janela transparente, sem injeção) e histórico de sessões.
 - Mais jogos: CS2, Apex Legends, Minecraft, Rocket League.
 - Perfis de driver (NVIDIA/AMD) por jogo.

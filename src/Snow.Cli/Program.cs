@@ -347,13 +347,20 @@ public static class Program
             if (Snow.Platform.Monitor.PresentMonLive.Find() is { } exe) pm = new(exe, proc);
             else Console.WriteLine("PresentMon não encontrado (Downloads): só uso de hardware, sem FPS.");
         }
+        double? cap = null;
+        if (g is not null)
+        {
+            var refresh = 0;
+            try { refresh = HardwareProfiler.Collect().MonitorRefreshHz; } catch { }
+            cap = Snow.Platform.Monitor.FpsCapReader.ForGame(g, refresh);
+        }
         Console.WriteLine($"Snow Monitor · {seconds}s · contadores de GPU: {(pdh.HasGpuCounters ? "sim" : "indisponíveis")}");
         var samples = new List<Snow.Core.Monitor.UsageSample>();
         for (var i = 0; i < seconds; i++)
         {
             Thread.Sleep(1000);
             var (fps, low) = pm?.Current() ?? (null, null);
-            var x = pdh.Sample(fps, low);
+            var x = pdh.Sample(fps, low) with { FpsCap = cap };
             samples.Add(x);
             Console.WriteLine($"{x.Time:HH:mm:ss}  CPU {x.CpuPercent,5:0.0}%  núcleo {x.BusiestCorePercent,5:0.0}%  GPU {(x.GpuPercent?.ToString("0.0") ?? "  -  "),5}%  VRAM {(x.VramUsedGb?.ToString("0.0") ?? "-"),4} GB  RAM {x.RamUsedPercent,3:0}%  FPS {(x.Fps?.ToString("0") ?? "-"),4}  → {Snow.Core.Monitor.BottleneckClassifier.Label(Snow.Core.Monitor.BottleneckClassifier.Classify(x))}");
         }
