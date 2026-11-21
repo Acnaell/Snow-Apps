@@ -43,8 +43,11 @@ public static partial class HardwareProfiler
         catch (Exception e) { warnings.Add($"Falha ao executar o PowerShell: {e.Message}"); }
 
         var native = CollectNative(power, warnings);
+        IReadOnlyList<DxgiAdapter> dxgi = [];
+        try { dxgi = Dxgi.Enumerate(); }
+        catch (Exception e) { warnings.Add($"DXGI indisponível: {e.Message}"); }
         var libs = GameLibraryFinder.Find(reg);
-        var profile = Build(json, native, reg, new WindowsServiceControl(reg), libs);
+        var profile = Build(json, native, reg, new WindowsServiceControl(reg), libs, dxgi);
         return profile with { CollectionWarnings = [.. warnings, .. profile.CollectionWarnings] };
     }
 
@@ -96,7 +99,8 @@ public static partial class HardwareProfiler
 
     // ───────────────────────── montagem (pura; testável com fakes) ─────────────────────────
 
-    public static HardwareProfile Build(string json, NativeInfo native, IRegistryStore reg, IServiceControl svc, IReadOnlyList<string> gameLibraries)
+    public static HardwareProfile Build(string json, NativeInfo native, IRegistryStore reg, IServiceControl svc, IReadOnlyList<string> gameLibraries,
+        IReadOnlyList<DxgiAdapter>? dxgi = null)
     {
         var warnings = new List<string>();
         JsonElement root;
@@ -107,7 +111,7 @@ public static partial class HardwareProfiler
         var hypervisor = Bool(cs, "Hypervisor");
         var os = ReadOs(reg, native.Architecture);
         var cpu = ReadCpu(root, native, hypervisor);
-        var gpus = Items(root, "gpu").Select(g => ReadGpu(g, reg)).ToList();
+        var gpus = Items(root, "gpu").Select(g => ReadGpu(g, reg, dxgi ?? [])).ToList();
         var memory = ReadMemory(root, native);
         var storage = ReadStorage(root, native.SystemDrive, gameLibraries);
 
@@ -195,7 +199,9 @@ public static partial class HardwareProfiler
         };
     }
 
-    private static GpuInfo ReadGpu(JsonElement g, IRegistryStore reg)
+    [GeneratedRegex(@"VEN_([0-9A-F]{4})&DEV_([0-9A-F]{4})", RegexOptions.IgnoreCase)] private static partial Regex VenDev();
+
+    private static GpuInfo ReadGpu(JsonElement g, IRegistryStore reg, IReadOnlyList<DxgiAdapter> dxgi)
     {
         var name = Str(g, "Name") ?? "Desconhecida";
         var pnp = Str(g, "Pnp") ?? "";
@@ -221,6 +227,16 @@ public static partial class HardwareProfiler
             }
         }
         catch { /* mantém AdapterRAM */ }
+
+        // DXGI: mesma fonte do Gerenciador de Tarefas; cobre drivers que não gravam qwMemorySize no registro.
+        if (VenDev().Match(pnp) is { Success: true } vd)
+        {
+            var ven = Convert.ToUInt32(vd.Groups[1].Value, 16);
+            var dev = Convert.ToUInt32(vd.Groups[2].Value, 16);
+            var fromDx = dxgi.Where(a => !a.IsSoftware && a.VendorId == ven && a.DeviceId == dev)
+                             .Select(a => (long)a.DedicatedVideoMemory).DefaultIfEmpty(0).Max();
+            if (fromDx > vram) vram = fromDx;
+        }
 
         var isVirtual = GpuGenerations.IsVirtualAdapter(vendor, name);
         return new GpuInfo
@@ -258,7 +274,12 @@ public static partial class HardwareProfiler
     {
         var mods = Items(root, "mem").Select(m => new
         {
-            Module = new MemoryModule((long)(UInt64(m, "Capacity")), Int(m, "Speed"), Str(m, "Locator") ?? "", Str(m, "Bank") ?? "", Str(m, "Maker") ?? "", Str(m, "Part") ?? ""),
+            // TypeDetail (SMBIOS): bit 0x2000 = Registered (Buffered). TotalWidth 72 vs DataWidth 64 = ECC.
+            Module = new MemoryModule((long)(UInt64(m, "Capacity")), Int(m, "Speed"), Str(m, "Locator") ?? "", Str(m, "Bank") ?? "", Str(m, "Maker") ?? "", Str(m, "Part") ?? "")
+            {
+                IsRegistered = (Int(m, "TypeDetail") & 0x2000) != 0,
+                IsEcc = Int(m, "TotalWidth") > Int(m, "DataWidth") && Int(m, "DataWidth") > 0,
+            },
             Configured = Int(m, "Configured"),
             Type = Int(m, "SmbiosType"),
         }).ToList();

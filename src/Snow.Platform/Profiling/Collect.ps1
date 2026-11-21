@@ -29,6 +29,7 @@ $o.mem = @(Q Win32_PhysicalMemory | ForEach-Object {
         Capacity = [uint64]$_.Capacity; Speed = [int]$_.Speed; Configured = [int]$_.ConfiguredClockSpeed
         Locator = "$($_.DeviceLocator)"; Bank = "$($_.BankLabel)"; Maker = "$($_.Manufacturer)".Trim()
         Part = "$($_.PartNumber)".Trim(); SmbiosType = [int]$_.SMBIOSMemoryType
+        TypeDetail = [int]$_.TypeDetail; TotalWidth = [int]$_.TotalWidth; DataWidth = [int]$_.DataWidth
     }
 })
 

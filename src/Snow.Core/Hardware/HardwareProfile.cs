@@ -22,6 +22,35 @@ public sealed record CpuInfo
 
     public bool IsX3D => Name.Contains("X3D", StringComparison.OrdinalIgnoreCase);
 
+    public bool IsXeon => Name.Contains("Xeon", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Plataformas com 4 canais de memória: Xeon E5/W (LGA 2011/2066), Core i7/i9 X-series (X79/X99/X299), Threadripper.</summary>
+    public bool IsQuadChannelPlatform =>
+        System.Text.RegularExpressions.Regex.IsMatch(Name,
+            @"Xeon.*\bE5-\d{4}|Xeon.*\bW-[23]\d{3}|Core\(TM\) i7-(38|39|48|49|58|59|68|69)\d\d|Core\(TM\) i[79]-\d{4,5}X|Threadripper",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Velocidade máxima de RAM definida pelo próprio processador (Xeon E5 v3/v4 mais comuns nas placas X99).
+    /// Fonte: especificações da Intel (ARK). null = desconhecida.
+    /// </summary>
+    public int? MaxMemorySpeedMts
+    {
+        get
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(Name, @"E5-(\d{4})\s*v([34])", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (!m.Success) return null;
+            return (m.Groups[1].Value, m.Groups[2].Value) switch
+            {
+                ("2620" or "2630" or "2640" or "1620" or "1650", "3") => 1866,
+                (_, "3") => 2133,
+                ("2620" or "2630" or "2640", "4") => 2133,
+                (_, "4") => 2400,
+                _ => null,
+            };
+        }
+    }
+
     /// <summary>
     /// Ryzen X3D com dois CCDs (7900X3D/7950X3D/9900X3D/9950X3D): o driver AMD PPM usa
     /// core parking + Game Bar para isolar jogos no CCD com V-Cache. Não mexer em parking aqui.
@@ -49,7 +78,13 @@ public sealed record GpuInfo
     public bool SupportsHags => !IsVirtual && WddmMajorFromDriver >= 27 && GpuGenerations.SupportsHags(this);
 }
 
-public sealed record MemoryModule(long CapacityBytes, int SpeedMts, string Slot, string Bank, string Manufacturer, string PartNumber);
+public sealed record MemoryModule(long CapacityBytes, int SpeedMts, string Slot, string Bank, string Manufacturer, string PartNumber)
+{
+    /// <summary>Registered/Buffered (RDIMM, memória de servidor). Não pode ser misturada com memória comum (UDIMM).</summary>
+    public bool IsRegistered { get; init; }
+    /// <summary>Correção de erros (barramento de 72 bits em vez de 64).</summary>
+    public bool IsEcc { get; init; }
+}
 
 public sealed record MemoryInfo
 {

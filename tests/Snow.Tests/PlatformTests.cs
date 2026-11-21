@@ -345,6 +345,56 @@ public static class ProfilerTests
             "jogos em HDD → manter SysMain");
     }
 
+    [Test] public static void VramComesFromDxgiWhenAdapterRamIsCapped()
+    {
+        // Caso real do Thiago: RX 580 2048SP de 8 GB; AdapterRAM (uint32) para em 4 GB e o driver não grava qwMemorySize.
+        const string json = """
+        {"cpu":[{"Name":"Intel(R) Xeon(R) CPU E5-2620 v3 @ 2.40GHz","Manufacturer":"GenuineIntel","Cores":6,"Threads":12,"MaxClock":2400,"Virt":true}],
+         "gpu":[{"Name":"AMD Radeon RX 580 2048SP","Pnp":"PCI\\VEN_1002&DEV_6FDF&SUBSYS_0B311002&REV_EF\\4&1","Driver":"31.0.21925.1001","AdapterRam":4293918720,"Refresh":75}],
+         "mem":[{"Capacity":17179869184,"Speed":2133,"Configured":1866,"Locator":"DIMM_A1","Bank":"BANK 0","SmbiosType":26,"TypeDetail":8320,"TotalWidth":72,"DataWidth":64}],
+         "cs":{"PcType":1},"chassis":[3]}
+        """;
+        var dx = new List<Snow.Platform.Native.DxgiAdapter>
+        {
+            new("AMD Radeon RX 580 2048SP", 0x1002, 0x6FDF, 8UL << 30, false),
+            new("Microsoft Basic Render Driver", 0x1414, 0x8C, 0, true),
+        };
+        var hw = HardwareProfiler.Build(json, Native, new FakeRegistry(), new FakeServices(), [], dx);
+        var gpu = Assert.Single(hw.Gpus, "gpu");
+        Assert.Equal(8L << 30, gpu.VramBytes, "VRAM real pelo DXGI");
+        Assert.Equal(75, hw.MonitorRefreshHz);
+        var noDx = HardwareProfiler.Build(json, Native, new FakeRegistry(), new FakeServices(), []);
+        Assert.Equal(4293918720L, noDx.Gpus[0].VramBytes, "sem DXGI continua o valor antigo (fallback)");
+        Assert.Equal(Snow.Core.Games.HardwareTier.Intermediario, Snow.Core.Games.HardwareTiers.Classify(hw), "8 GB de VRAM → nível Intermediário");
+        var mod = hw.Memory.Modules[0];
+        Assert.True(mod.IsRegistered && mod.IsEcc, "RDIMM ECC detectado (TypeDetail 0x2000, 72/64 bits)");
+        Assert.True(Insights.Analyze(hw).Any(i => i.Detail.Contains("não funciona junto com memória comum")), "aviso de não misturar RDIMM com UDIMM");
+    }
+
+    [Test] public static void XeonQuadChannelInsightsAreRight()
+    {
+        var hw = Hw.Desktop(h => h with
+        {
+            Cpu = new CpuInfo { Name = "Intel(R) Xeon(R) CPU E5-2620 v3 @ 2.40GHz", Vendor = CpuVendor.Intel, PhysicalCores = 6, LogicalProcessors = 12 },
+            Memory = new MemoryInfo { TotalBytes = 16L << 30, AvailableBytes = 8L << 30, Type = "DDR4", ConfiguredSpeedMts = 1866, RatedSpeedMts = 2133,
+                Channels = MemoryChannelMode.Single, ChannelsEstimated = false, Modules = [new MemoryModule(16L << 30, 2133, "DIMM_A1", "BANK 0", "", "")] },
+        });
+        Assert.True(hw.Cpu.IsQuadChannelPlatform && hw.Cpu.IsXeon);
+        Assert.Equal(1866, hw.Cpu.MaxMemorySpeedMts);
+        var ins = Insights.Analyze(hw);
+        var ch = ins.Single(i => i.Title.Contains("canais"));
+        Assert.Equal(InsightLevel.Critico, ch.Level);
+        Assert.True(ch.Title == "Memória usando 1 de 4 canais", ch.Title);
+        Assert.False(ins.Any(i => i.Detail.Contains("ative o XMP")), "não sugerir XMP em Xeon");
+        Assert.True(ins.Any(i => i.Detail.Contains("máximo que o processador suporta (1866")), "explica o limite do processador");
+        Assert.False(ins.Any(i => i.Title.StartsWith("Memória em canal único")), "não duplica o aviso");
+
+        Assert.Equal(2400, (hw.Cpu with { Name = "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz" }).MaxMemorySpeedMts);
+        Assert.True((hw.Cpu with { Name = "Intel(R) Core(TM) i7-5820K CPU @ 3.30GHz" }).IsQuadChannelPlatform, "X99");
+        Assert.False((hw.Cpu with { Name = "Intel(R) Core(TM) i7-13700K" }).IsQuadChannelPlatform);
+        Assert.False((hw.Cpu with { Name = "Intel(R) Xeon(R) CPU E3-1230 v3 @ 3.30GHz" }).IsQuadChannelPlatform, "E3 é dual channel");
+    }
+
     [Test] public static void SurvivesEmptyOrBrokenJson()
     {
         var hw = HardwareProfiler.Build("not json", Native, new FakeRegistry(), new FakeServices(), []);

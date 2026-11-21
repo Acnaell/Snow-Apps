@@ -17,11 +17,33 @@ public static class Insights
         if (mem.TotalBytes > 0 && mem.TotalGb < 7.5)
             list.Add(new(InsightLevel.Critico, "Pouca RAM", $"{mem.TotalGb:0.#} GB é pouco para jogos atuais; 16 GB é o mínimo recomendado hoje."));
 
-        if (mem.Channels == MemoryChannelMode.Single)
+        var cpu = hw.Cpu;
+        var modules = mem.Modules.Count;
+        var registered = mem.Modules.Any(m => m.IsRegistered);
+        var ecc = mem.Modules.Any(m => m.IsEcc);
+        var serverNote = registered
+            ? " Atenção: o seu módulo é de servidor (ECC Registered/RDIMM) e não funciona junto com memória comum de PC (UDIMM). " +
+              "Para completar os canais, use módulos RDIMM DDR4 iguais ao atual (costumam ser baratos usados) ou troque tudo por módulos comuns iguais, se a placa aceitar."
+            : ecc ? " O seu módulo tem ECC: prefira módulos iguais (mesmo tipo e capacidade)." : "";
+        if (cpu.IsQuadChannelPlatform && modules is > 0 and < 4)
+            list.Add(new(modules == 1 ? InsightLevel.Critico : InsightLevel.Atencao,
+                $"Memória usando {modules} de 4 canais",
+                $"O {cpu.Name.Replace("(R)", "").Replace("(TM)", "")} suporta memória em quatro canais, mas há {modules} módulo(s) instalado(s). " +
+                "Cada módulo a mais (iguais, nos slots indicados no manual) multiplica a banda de memória, o que conta muito em jogos limitados por CPU. " +
+                "Algumas placas X99 de entrada só têm 2 slots: nesse caso, use 2 módulos." + serverNote));
+        else if (mem.Channels == MemoryChannelMode.Single)
             list.Add(new(InsightLevel.Critico, "Memória em canal único (single channel)",
-                "Single channel pode custar de 10% a 30% de FPS em jogos limitados por CPU e muito mais em GPU integrada. Use dois módulos iguais nos slots indicados no manual da placa-mãe."));
+                "Single channel pode custar de 10% a 30% de FPS em jogos limitados por CPU e muito mais em GPU integrada. Use dois módulos iguais nos slots indicados no manual da placa-mãe." + serverNote));
 
-        if (mem.ConfiguredSpeedMts > 0)
+        if (mem.ConfiguredSpeedMts > 0 && cpu.IsXeon)
+        {
+            var max = cpu.MaxMemorySpeedMts;
+            list.Add(new(InsightLevel.Info, $"RAM a {mem.ConfiguredSpeedMts} MT/s ({mem.Type})",
+                max is { } mx && mem.ConfiguredSpeedMts >= mx - 50
+                    ? $"Já está no máximo que o processador suporta ({mx} MT/s). Em Xeon a velocidade é travada pelo processador: XMP não se aplica."
+                    : "Em Xeon a velocidade máxima da RAM é definida pelo modelo do processador e o XMP normalmente não se aplica. Mais canais (mais módulos) rendem mais que velocidade nessa plataforma."));
+        }
+        else if (mem.ConfiguredSpeedMts > 0)
         {
             var lowDdr4 = mem.Type == "DDR4" && mem.ConfiguredSpeedMts <= 2666;
             var lowDdr5 = mem.Type == "DDR5" && mem.ConfiguredSpeedMts <= 4800;
