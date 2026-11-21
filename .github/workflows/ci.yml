@@ -273,14 +273,9 @@ jobs:
             $common = @('-c','Release','-r',$rid,'--self-contained','true','-p:PublishSingleFile=true','-p:IncludeNativeLibrariesForSelfExtract=true','-p:EnableCompressionInSingleFile=true','-p:DebugType=none','-o',$out)
             dotnet publish src/Snow.App @common
             dotnet publish src/Snow.Cli @common
-            Copy-Item README.md, LICENSE, tools/snow-bench.ps1 $out
-            Compress-Archive -Path "$out/*" -DestinationPath "dist/Snow-$rid.zip" -Force
+            Copy-Item README.md, LICENSE, PRIVACY.md, CODE_SIGNING.md, tools/snow-bench.ps1 $out
           }
-          Get-ChildItem dist -Recurse -Include *.exe,*.zip | Select-Object FullName, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
-          # SHA256SUMS.txt: o atualizador do Snow confere o pacote baixado contra este arquivo
-          Get-ChildItem dist/*.zip | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
-            Set-Content -Encoding ascii dist/SHA256SUMS.txt
-          Get-Content dist/SHA256SUMS.txt
+          Get-ChildItem dist -Recurse -Include *.exe | Select-Object FullName, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
           # Confere a arquitetura gravada no cabeçalho PE de cada exe (0x8664 x64, 0x14c x86, 0xAA64 ARM64)
           $expected = @{ 'win-x64' = 0x8664; 'win-x86' = 0x14c; 'win-arm64' = 0xAA64 }
           foreach ($rid in $expected.Keys) {
@@ -296,6 +291,53 @@ jobs:
               if ($machine -ne $expected[$rid]) { throw "$($exe.Name) em $rid tem arquitetura errada" }
             }
           }
+      # ── Assinatura (SignPath Foundation) ─────────────────────────────────────────────
+      # Só em versões publicadas e quando o projeto já estiver configurado no SignPath
+      # (variável SIGNPATH_ORGANIZATION_ID e segredo SIGNPATH_API_TOKEN no repositório).
+      # Cada pedido precisa de aprovação manual no SignPath. Veja CODE_SIGNING.md.
+      - name: Enviar executáveis sem assinatura
+        id: unsigned
+        if: inputs.release_tag != '' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: Snow-sem-assinatura
+          path: |
+            dist/Snow-win-x64
+            dist/Snow-win-x86
+            dist/Snow-win-arm64
+      - name: Assinar no SignPath (aguarda aprovação manual)
+        if: inputs.release_tag != '' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'Snow' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed
+      - name: Usar os executáveis assinados
+        if: inputs.release_tag != '' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        shell: pwsh
+        run: |
+          Copy-Item signed/* dist -Recurse -Force
+          foreach ($exe in Get-ChildItem dist/Snow-win-*/*.exe) {
+            $sig = Get-AuthenticodeSignature $exe.FullName
+            Write-Host ("{0,-40} {1} {2}" -f $exe.FullName.Substring($pwd.Path.Length), $sig.Status, $sig.SignerCertificate.Subject)
+            if ($sig.Status -ne 'Valid') { throw "$($exe.Name) não está assinado corretamente" }
+          }
+      - name: Empacotar
+        shell: pwsh
+        run: |
+          foreach ($rid in 'win-x64','win-x86','win-arm64') {
+            Compress-Archive -Path "dist/Snow-$rid/*" -DestinationPath "dist/Snow-$rid.zip" -Force
+          }
+          # SHA256SUMS.txt: o atualizador do Snow confere o pacote baixado contra este arquivo
+          Get-ChildItem dist/*.zip | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
+            Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          Get-Content dist/SHA256SUMS.txt
+
       - name: Smoke test dos executáveis publicados (CLI e interface, como o usuário recebe)
         shell: pwsh
         run: |
@@ -372,5 +414,7 @@ jobs:
             Baixe o `.zip` da arquitetura do seu Windows (veja em **Configurações → Sistema → Sobre → Tipo de sistema**): **x64** para "sistema operacional de 64 bits, processador baseado em x64", **x86** para "sistema operacional de 32 bits", **ARM64** para Snapdragon/ARM, extraia e execute **Snow.exe** (o Windows pedirá permissão de Administrador).
             Os executáveis são autocontidos: não precisa instalar o .NET. `snow-cli.exe` é a versão de linha de comando.
             A partir da v0.5.0, o Snow se atualiza sozinho (botão "Atualizar agora" na barra lateral), conferindo o SHA-256 de cada pacote.
+
+            **Code signing policy:** Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org). Detalhes em [CODE_SIGNING.md](https://github.com/Acnaell/Snow-Apps/blob/main/CODE_SIGNING.md) · [Privacidade](https://github.com/Acnaell/Snow-Apps/blob/main/PRIVACY.md).
 
             Testado no CI em Windows build 20348 (família Windows 10) e 26100 (Windows 11 24H2).

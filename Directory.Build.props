@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <Version>0.10.1</Version>
+    <Version>0.10.2</Version>
     <Company>Thiago Neves</Company>
     <Product>Snow Game Optimizer</Product>
     <Copyright>© 2026 Thiago Neves</Copyright>

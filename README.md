@@ -6,6 +6,8 @@
   <b>Snow Apps — um kit para o seu PC: <i>Snow Gaming</i> (otimização), <i>Snow Health</i> (saúde) e <i>Snow Monitor</i> (desempenho).</b><br>
   Diagnóstico de hardware e otimizações reais, seguras e reversíveis para jogos no Windows 10 e 11.<br>
   C# · .NET 8 · WPF · zero dependências externas · modo escuro
+
+**Site:** https://acnaell.github.io/Snow-Apps/
 </p>
 
 ---
@@ -190,3 +192,10 @@ tests/Snow.Tests    runner próprio com fakes
 
 ## Licença
 MIT © 2026 Thiago Neves
+
+## Code signing policy
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+Papéis, o que é assinado e como cada versão é aprovada: [CODE_SIGNING.md](CODE_SIGNING.md).
+
+## Privacidade
+O Snow não tem telemetria e não envia dados do seu PC. This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it, except for the update check, which can be turned off. Detalhes: [PRIVACY.md](PRIVACY.md).

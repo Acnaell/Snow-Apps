@@ -56,7 +56,7 @@ public sealed class MainViewModel : ObservableObject
         _updater.CleanupOldFiles();
         UpdateCommand = new RelayCommand(async () => await InstallUpdateAsync(), () => UpdateAvailable && !IsBusy);
         CheckUpdatesCommand = new RelayCommand(async () => await CheckUpdatesAsync(manual: true), () => !IsBusy);
-        _ = CheckUpdatesAsync(manual: false);
+        if (AutoCheckUpdates) _ = CheckUpdatesAsync(manual: false);
         Profiles = new ObservableCollection<ProfileCardViewModel>(ProfileCardViewModel.All());
         LastResult.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasResult));
         IsAdmin = Elevation.IsAdministrator();
@@ -91,6 +91,18 @@ public sealed class MainViewModel : ObservableObject
     public ICommand CheckUpdatesCommand { get; }
     public bool UpdateAvailable => _update?.Available == true;
     public string UpdateText => _update?.Latest is { } l ? $"Snow {l.Tag} disponível" : "";
+
+    private static readonly Snow.Platform.Executors.JsonStateStore Prefs = new();
+
+    /// <summary>
+    /// Verificar atualizações ao abrir (padrão: sim). É o único acesso automático à rede do Snow
+    /// (uma consulta à API pública de releases do GitHub, sem dados do PC); a política de privacidade exige poder desligar.
+    /// </summary>
+    public bool AutoCheckUpdates
+    {
+        get => Prefs.Get("autoUpdateCheck") != "false";
+        set { Prefs.Set("autoUpdateCheck", value ? "true" : "false"); OnPropertyChanged(); _log.Info($"Verificar atualizações ao abrir: {(value ? "ligado" : "desligado")}"); }
+    }
 
     private async Task CheckUpdatesAsync(bool manual)
     {

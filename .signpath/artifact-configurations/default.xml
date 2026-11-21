@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Configuração de artefato do SignPath (copiar para o projeto "Snow" no SignPath).
+     O artefato enviado pelo CI é um zip com as três pastas publicadas; só os exe do Snow são assinados. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <directory path="Snow-win-x64">
+      <pe-file path="Snow.exe" product-name="Snow Game Optimizer"><authenticode-sign /></pe-file>
+      <pe-file path="snow-cli.exe" product-name="Snow Game Optimizer"><authenticode-sign /></pe-file>
+    </directory>
+    <directory path="Snow-win-x86">
+      <pe-file path="Snow.exe" product-name="Snow Game Optimizer"><authenticode-sign /></pe-file>
+      <pe-file path="snow-cli.exe" product-name="Snow Game Optimizer"><authenticode-sign /></pe-file>
+    </directory>
+    <directory path="Snow-win-arm64">
+      <pe-file path="Snow.exe" product-name="Snow Game Optimizer"><authenticode-sign /></pe-file>
+      <pe-file path="snow-cli.exe" product-name="Snow Game Optimizer"><authenticode-sign /></pe-file>
+    </directory>
+  </zip-file>
+</artifact-configuration>
