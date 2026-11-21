@@ -18,6 +18,15 @@ public static class Report
         _ => "Desconhecido",
     };
 
+    public static string Label(this ServiceStart s) => s switch
+    {
+        ServiceStart.Automatic => "Automático",
+        ServiceStart.AutomaticDelayed => "Automático (atrasado)",
+        ServiceStart.Manual => "Manual",
+        ServiceStart.Disabled => "Desativado",
+        _ => s.ToString(),
+    };
+
     public static string Label(this DiskKind k) => k switch
     {
         DiskKind.NvmeSsd => "SSD NVMe",

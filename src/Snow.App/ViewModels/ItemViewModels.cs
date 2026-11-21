@@ -24,7 +24,7 @@ public sealed class ProfileCardViewModel(OptimizationProfile profile, string ico
     public static IReadOnlyList<ProfileCardViewModel> All() =>
     [
         new(OptimizationProfile.Competitivo, "", "Alto Desempenho", "Competitivo · FPS máximo · menor latência",
-            ["Plano Desempenho Máximo e sem core parking", "Telemetria, SysMain e Game DVR desligados*", "Rede sem Nagle/limitação MMCSS", "HAGS e otimizações de janela", "Limpeza de temporários e shaders antigos"]),
+            ["Plano Desempenho Máximo e sem core parking", "Telemetria, SysMain (só com SSD) e Game DVR desligados", "Rede sem Nagle/limitação MMCSS", "HAGS e otimizações de janela", "Limpeza de temporários e shaders antigos"]),
         new(OptimizationProfile.Desempenho, "", "Desempenho", "Estável e fluido, sem abrir mão de recursos",
             ["Alto Desempenho / Melhor desempenho (notebook)", "Mantém Bluetooth, impressora e Game Bar", "Só desativa telemetria e launchers pesados", "HAGS, Modo de Jogo e MMCSS", "Limpeza de temporários"]),
         new(OptimizationProfile.Equilibrado, "", "Equilibrado", "Uso diário, notebook na bateria",

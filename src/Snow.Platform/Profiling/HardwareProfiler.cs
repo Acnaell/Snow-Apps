@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Snow.Core.Hardware;
+using Snow.Core.Recommendation;
 using Snow.Core.Tweaks;
 using Snow.Platform.Executors;
 using Snow.Platform.Native;
@@ -133,8 +134,8 @@ public static partial class HardwareProfiler
                 ? TriState.On : TriState.Off,
             MemoryIntegrity = dg.ValueKind == JsonValueKind.Undefined ? TriState.Unknown : running.Contains(2) ? TriState.On : TriState.Off,
             VbsRunning = dg.ValueKind == JsonValueKind.Undefined ? TriState.Unknown : Int(dg, "Vbs") == 2 ? TriState.On : TriState.Off,
-            SysMainStart = svc.GetStart("SysMain")?.ToString() ?? "ausente",
-            DiagTrackStart = svc.GetStart("DiagTrack")?.ToString() ?? "ausente",
+            SysMainStart = svc.GetStart("SysMain")?.Label() ?? "ausente",
+            DiagTrackStart = svc.GetStart("DiagTrack")?.Label() ?? "ausente",
             IsLaptop = isLaptop,
             ModernStandby = native.Power.ModernStandby,
             OnBattery = native.OnAc == false,

@@ -40,12 +40,8 @@ public partial class MainWindow : Window
         {
             nav.IsChecked = true;
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
-            // Tamanho fixo, independente da resolução da máquina (runners de CI têm telas pequenas).
-            var size = new Size(1280, 800);
-            Root.Measure(size);
-            Root.Arrange(new Rect(size));
             Root.UpdateLayout();
-            var bmp = new RenderTargetBitmap(1280, 800, 96, 96, PixelFormats.Pbgra32);
+            var bmp = new RenderTargetBitmap((int)Root.ActualWidth, (int)Root.ActualHeight, 96, 96, PixelFormats.Pbgra32);
             bmp.Render(Root);
             var enc = new PngBitmapEncoder();
             enc.Frames.Add(BitmapFrame.Create(bmp));

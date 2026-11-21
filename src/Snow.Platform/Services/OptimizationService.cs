@@ -57,7 +57,7 @@ public sealed class BackupStore(string? dir = null)
     public BackupSession? Get(string id) => List().FirstOrDefault(s => s.Id == id);
 }
 
-public sealed record ApplyOptions(bool CreateRestorePoint = true);
+public sealed record ApplyOptions(bool CreateRestorePoint = true, string? Label = null);
 public sealed record ProgressInfo(int Done, int Total, string Message);
 
 public sealed record SelfTestResult(bool Success, IReadOnlyList<string> Lines);
@@ -76,7 +76,7 @@ public sealed class OptimizationService(ExecutorSet executors, BackupStore backu
     public BackupSession Apply(OptimizationPlan plan, ApplyOptions options, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
         var selected = plan.Selected.ToList();
-        var session = new BackupSession { Profile = plan.Profile.ToString() };
+        var session = new BackupSession { Profile = options.Label ?? plan.Profile.ToString() };
         backups.Save(session);
         log.Info($"=== Aplicando perfil {plan.Profile}: {selected.Count} ajuste(s). Backup {session.Id} ===");
 
@@ -193,7 +193,7 @@ public sealed class OptimizationService(ExecutorSet executors, BackupStore backu
 
         var before = actions.Select(x => Safe(() => executors.For(x.a).Capture(x.a))).ToList();
         var testPlan = plan.WithSelection(plan.Selected.Where(p => p.Definition.Reversible).Select(p => p.Definition.Id));
-        var session = Apply(testPlan, new ApplyOptions(CreateRestorePoint: false));
+        var session = Apply(testPlan, new ApplyOptions(CreateRestorePoint: false, Label: $"Autoteste ({plan.Profile})"));
 
         foreach (var t in session.Tweaks)
         {
