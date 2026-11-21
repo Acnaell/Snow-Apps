@@ -67,6 +67,10 @@ public static class UpgradeTests
         Assert.True(ActiveGameDetector.Pick(new Dictionary<string, int> { ["dwm.exe"] = 990, ["explorer.exe"] = 60 }, null) is null);
         // não troca de jogo por oscilação pequena
         Assert.Equal("Game A.exe", ActiveGameDetector.Pick(new Dictionary<string, int> { ["Game A.exe"] = 150, ["Game B.exe"] = 200 }, "Game A.exe"));
+        // app em segundo plano a 35 FPS (ex.: Discord PTB) não vira "jogo" quando há janela em primeiro plano que não é jogo
+        Assert.True(ActiveGameDetector.Pick(new Dictionary<string, int> { ["SomeWidget.exe"] = 105 }, null, foregroundApp: "LeagueClientUx.exe") is null);
+        Assert.Equal("HollowKnight.exe", ActiveGameDetector.Pick(new Dictionary<string, int> { ["SomeWidget.exe"] = 300, ["HollowKnight.exe"] = 170 }, null, "HollowKnight.exe"));
+        Assert.Equal("League of Legends.exe", ActiveGameDetector.Pick(new Dictionary<string, int> { ["League of Legends.exe"] = 400 }, null, "Discord.exe"), "alt-tab: jogo conhecido continua");
         // menu do LoL aberto com o jogo em partida: o jogo vence
         Assert.Equal("League of Legends.exe", ActiveGameDetector.Pick(new Dictionary<string, int> { ["LeagueClientUxRender.exe"] = 180, ["League of Legends.exe"] = 400 }, null));
     }

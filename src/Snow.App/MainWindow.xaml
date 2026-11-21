@@ -79,6 +79,9 @@
                     <RadioButton x:Name="NavMonitor" Style="{StaticResource NavButton}" GroupName="nav">
                         <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE9F9;"/><TextBlock Text="Desempenho" Margin="12,0,0,0"/></StackPanel>
                     </RadioButton>
+                    <RadioButton x:Name="NavBench" Style="{StaticResource NavButton}" GroupName="nav">
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xEC4A;"/><TextBlock Text="Pontuação e estresse" Margin="12,0,0,0"/></StackPanel>
+                    </RadioButton>
 
                     <TextBlock Text="GERAL" Style="{StaticResource NavHeader}" Margin="12,18,0,6"/>
                     <RadioButton x:Name="NavRestore" Style="{StaticResource NavButton}" GroupName="nav">
@@ -100,6 +103,7 @@
             <views:StartupView Visibility="{Binding IsChecked, ElementName=NavStartup, Converter={StaticResource BoolVis}}"/>
             <views:HealthView Visibility="{Binding IsChecked, ElementName=NavHealth, Converter={StaticResource BoolVis}}"/>
             <views:MonitorView Visibility="{Binding IsChecked, ElementName=NavMonitor, Converter={StaticResource BoolVis}}"/>
+            <views:BenchView Visibility="{Binding IsChecked, ElementName=NavBench, Converter={StaticResource BoolVis}}"/>
             <views:RestoreView Visibility="{Binding IsChecked, ElementName=NavRestore, Converter={StaticResource BoolVis}}"/>
             <views:LogView Visibility="{Binding IsChecked, ElementName=NavLog, Converter={StaticResource BoolVis}}"/>
 

@@ -29,6 +29,8 @@ public static class Program
           snow-cli gpu                                  Fontes de VRAM (DXGI, registro, WMI) para diagnóstico
           snow-cli update [--check] [--yes]             Verifica/instala a versão mais nova (SHA-256 conferido)
           snow-cli monitor [--seconds 30] [--game auto|fortnite|lol|valorant]   Snow Monitor: uso, FPS e gargalo
+          snow-cli bench [--drives C,D]                 Pontuação: CPU (1 núcleo / todos), memória e discos
+          snow-cli stress [--minutes 10] [--no-ram] [--no-cpu]   Estresse com conferência de erros e queda de clock
           snow-cli upgrade [--seconds 60]               Upgrade sem gargalo (mede o jogo aberto se --seconds > 0)
           snow-cli compare antes.csv depois.csv          Compara duas capturas do PresentMon/Snow Bench
           snow-cli games [--preset alto|medio]          Jogos instalados, pontos de melhora e prévia da predefinição
@@ -76,6 +78,8 @@ public static class Program
                 "update" => RequireAdmin() ?? Update(opts),
                 "monitor" => Monitor(opts),
                 "upgrade" => Upgrade(opts),
+                "bench" => Bench(opts),
+                "stress" => Stress(opts),
                 "compare" => Compare(args.Skip(1).Where(a => !a.StartsWith("--")).ToArray()),
                 "game-apply" => GameApply(opts),
                 "selftest" => RequireAdmin() ?? SelfTest(opts),
@@ -381,6 +385,35 @@ public static class Program
     }
 
     private static Snow.Core.Monitor.SessionSummary? LastSummary;
+
+    private static int Bench(Dictionary<string, string?> o)
+    {
+        var hw = HardwareProfiler.Collect();
+        var drives = o.TryGetValue("drives", out var d) && !string.IsNullOrWhiteSpace(d)
+            ? d.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+            : [hw.Storage.SystemDrive];
+        var r = Snow.Platform.Bench.BenchRunner.Run(hw.Cpu.Name, drives, new Progress<string>(Console.WriteLine));
+        Console.WriteLine($"\nProcessador  1 núcleo: {r.CpuSingle} pts · {r.Threads} threads: {r.CpuMulti} pts");
+        Console.WriteLine($"Memória      {r.MemoryGBs} GB/s ({Snow.Core.Bench.BenchVerdicts.Memory(r.MemoryGBs)}) · latência {r.MemoryLatencyNs} ns ({Snow.Core.Bench.BenchVerdicts.Latency(r.MemoryLatencyNs)})");
+        foreach (var x in r.Disks)
+            Console.WriteLine($"Disco {x.Drive}     leitura {x.SeqReadMBs} MB/s · escrita {x.SeqWriteMBs} MB/s · 4K {x.Random4kReadIops} IOPS ({Snow.Core.Bench.BenchVerdicts.Disk(x)})");
+        Console.WriteLine($"Salvo em {Snow.Platform.Bench.BenchRunner.Dir}");
+        return 0;
+    }
+
+    private static int Stress(Dictionary<string, string?> o)
+    {
+        var minutes = o.TryGetValue("minutes", out var m) && double.TryParse(m, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : 10;
+        var cpu = !o.ContainsKey("no-cpu"); var ram = !o.ContainsKey("no-ram");
+        Console.WriteLine($"Estresse por {minutes} min · CPU {(cpu ? "sim" : "não")} · RAM {(ram ? "sim" : "não")} (Ctrl+C para parar)");
+        using var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+        var r = Snow.Platform.Bench.BenchRunner.Stress(TimeSpan.FromMinutes(minutes), cpu, ram,
+            p => { if ((int)p.At.TotalSeconds % 10 == 0) Console.WriteLine($"{p.At:mm\\:ss}  CPU {p.CpuPercent:0}%  clock {p.PerformancePercent:0}%  erros CPU {p.CpuErrors}  RAM {p.RamErrors}"); }, cts.Token);
+        Console.WriteLine();
+        foreach (var (ok, title, detail) in r.Verdicts()) Console.WriteLine($"{(ok ? "OK " : "!! ")}{title}\n    {detail}");
+        return r.CpuErrors + r.RamErrors > 0 ? 3 : 0;
+    }
 
     private static int Upgrade(Dictionary<string, string?> o)
     {

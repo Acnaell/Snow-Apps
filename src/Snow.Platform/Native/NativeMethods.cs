@@ -4,6 +4,10 @@ namespace Snow.Platform.Native;
 
 internal static partial class NativeMethods
 {
+    // ───────── user32.dll: janela em primeiro plano (só o id do processo dono; nada é aberto) ─────────
+    [DllImport("user32.dll")] internal static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] internal static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
     // ───────── powrprof.dll ─────────
     [DllImport("powrprof.dll")] internal static extern uint PowerGetActiveScheme(IntPtr userRootPowerKey, out IntPtr activePolicyGuid);
     [DllImport("powrprof.dll")] internal static extern uint PowerSetActiveScheme(IntPtr userRootPowerKey, ref Guid schemeGuid);

@@ -65,6 +65,8 @@ public sealed record GameContext(
 public interface IGameProfile
 {
     string GameId { get; }
+    /// <summary>Outros ids do mesmo jogo (ex.: versão Steam e Epic).</summary>
+    IReadOnlyList<string> Aliases => [];
     GameSupport Support { get; }
     /// <summary>Arquivos que o scanner deve ler para este jogo.</summary>
     IReadOnlyList<string> ConfigFiles(InstalledGame game);

@@ -15,7 +15,8 @@ public sealed class PresentMonLive : IDisposable
     // por aplicativo: quadros dos últimos 30 s (ao vivo) e todos os quadros (resumo/arquivo)
     private readonly Dictionary<string, List<(DateTime t, double ft)>> _recent = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<double>> _all = new(StringComparer.OrdinalIgnoreCase);
-    private int _ftCol = -1, _appCol = -1;
+    private int _ftCol = -1, _appCol = -1, _pidCol = -1;
+    private readonly Dictionary<uint, string> _pidApp = [];
     private readonly string? _fixedApp;
 
     public string? LastError { get; private set; }
@@ -107,12 +108,14 @@ public sealed class PresentMonLive : IDisposable
             _ftCol = Array.FindIndex(cells, c => c.Trim().Equals("FrameTime", StringComparison.OrdinalIgnoreCase)
                                               || c.Trim().Equals("MsBetweenPresents", StringComparison.OrdinalIgnoreCase));
             _appCol = Array.FindIndex(cells, c => c.Trim().Equals("Application", StringComparison.OrdinalIgnoreCase));
+            _pidCol = Array.FindIndex(cells, c => c.Trim().Equals("ProcessID", StringComparison.OrdinalIgnoreCase));
             return;
         }
         if (cells.Length <= _ftCol || !double.TryParse(cells[_ftCol], NumberStyles.Float, CultureInfo.InvariantCulture, out var ft) || ft <= 0 || ft > 1000) return;
         var app = _appCol >= 0 && _appCol < cells.Length && cells[_appCol].Length > 0 ? cells[_appCol].Trim() : _fixedApp ?? "?";
         lock (_lock)
         {
+            if (_pidCol >= 0 && _pidCol < cells.Length && uint.TryParse(cells[_pidCol], out var pid)) _pidApp[pid] = app;
             var now = DateTime.UtcNow;
             if (!_recent.TryGetValue(app, out var recent)) _recent[app] = recent = [];
             recent.Add((now, ft));
@@ -134,7 +137,15 @@ public sealed class PresentMonLive : IDisposable
         {
             var now = DateTime.UtcNow;
             var counts = _recent.ToDictionary(kv => kv.Key, kv => kv.Value.Count(f => (now - f.t).TotalSeconds <= 3), StringComparer.OrdinalIgnoreCase);
-            ActiveApp = Core.Monitor.ActiveGameDetector.Pick(counts, ActiveApp);
+            string? fg = null;
+            try
+            {
+                // id do processo da janela em primeiro plano, comparado com o ProcessID que o PresentMon já informa
+                Native.NativeMethods.GetWindowThreadProcessId(Native.NativeMethods.GetForegroundWindow(), out var fgPid);
+                _pidApp.TryGetValue(fgPid, out fg);
+            }
+            catch { }
+            ActiveApp = Core.Monitor.ActiveGameDetector.Pick(counts, ActiveApp, fg);
             return ActiveApp;
         }
     }

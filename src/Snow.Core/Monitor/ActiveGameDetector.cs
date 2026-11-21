@@ -12,6 +12,7 @@ public static class ActiveGameDetector
         "dwm.exe", "explorer.exe", "snow.exe", "snow-cli.exe",
         "obs64.exe", "obs32.exe", "streamlabs obs.exe", "discord.exe", "spotify.exe", "teams.exe", "ms-teams.exe", "whatsapp.exe", "telegram.exe",
         "chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "opera_gx.exe", "brave.exe", "vivaldi.exe", "msedgewebview2.exe",
+        "discordptb.exe", "discordcanary.exe", "deezer.exe", "onedrive.exe", "vgtray.exe", "nvidia overlay.exe", "xboxpcapp.exe",
         "steam.exe", "steamwebhelper.exe", "epicgameslauncher.exe", "epicwebhelper.exe", "battle.net.exe", "eadesktop.exe", "ubisoftconnect.exe", "galaxyclient.exe",
         "leagueclient.exe", "leagueclientux.exe", "leagueclientuxrender.exe", "riotclientservices.exe", "riotclientux.exe", "riotclientuxrender.exe", "riot client.exe",
         "wallpaper32.exe", "wallpaper64.exe", "webwallpaper32.exe", "lively.exe",
@@ -40,10 +41,19 @@ public static class ActiveGameDetector
     /// Escolhe o jogo ativo pelos quadros dos últimos segundos. Precisa de ≥ 20 quadros na janela (descarta janelas paradas);
     /// jogo conhecido tem preferência; o atual só é trocado se outro tiver claramente mais quadros (evita pular entre apps).
     /// </summary>
-    public static string? Pick(IReadOnlyDictionary<string, int> recentFrames, string? current)
+    /// <param name="foregroundApp">Programa da janela em primeiro plano (o jogo, quando você está jogando). Tem prioridade.</param>
+    public static string? Pick(IReadOnlyDictionary<string, int> recentFrames, string? current, string? foregroundApp = null)
     {
         var candidates = recentFrames.Where(kv => kv.Value >= 20 && !IsIgnored(kv.Key)).ToList();
         if (candidates.Count == 0) return null;
+        if (foregroundApp is not null && candidates.Any(kv => kv.Key.Equals(foregroundApp, StringComparison.OrdinalIgnoreCase)))
+            return candidates.First(kv => kv.Key.Equals(foregroundApp, StringComparison.OrdinalIgnoreCase)).Key;
+        // sem janela de jogo em primeiro plano (alt-tab, lobby): só jogo conhecido continua valendo; app desconhecido em segundo plano não
+        if (foregroundApp is not null)
+        {
+            candidates = candidates.Where(kv => KnownGames.ContainsKey(kv.Key)).ToList();
+            if (candidates.Count == 0) return null;
+        }
         var known = candidates.Where(kv => KnownGames.ContainsKey(kv.Key)).OrderByDescending(kv => kv.Value).ToList();
         var best = (known.Count > 0 ? known : candidates.OrderByDescending(kv => kv.Value).ToList())[0];
         if (current is not null && candidates.FirstOrDefault(kv => kv.Key.Equals(current, StringComparison.OrdinalIgnoreCase)) is { Key: not null } cur

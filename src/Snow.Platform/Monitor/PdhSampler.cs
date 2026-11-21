@@ -28,7 +28,13 @@ public sealed class PdhSampler : IDisposable
     private const uint PDH_MORE_DATA = 0x800007D2;
 
     private readonly IntPtr _query;
-    private readonly IntPtr _cpuTotal, _cpuCores, _gpuEngines, _gpuMemory;
+    private readonly IntPtr _cpuTotal, _cpuCores, _gpuEngines, _gpuMemory, _perf;
+
+    /// <summary>
+    /// "% Processor Performance" da última amostra: clock efetivo em % do clock base (acima de 100 = turbo).
+    /// Queda durante um teste de estresse = processador reduzindo o clock (temperatura ou limite de energia).
+    /// </summary>
+    public double? LastPerformancePercent { get; private set; }
 
     public bool HasGpuCounters => _gpuEngines != IntPtr.Zero;
 
@@ -39,6 +45,7 @@ public sealed class PdhSampler : IDisposable
         _cpuCores = Add(@"\Processor Information(*)\% Processor Utility") is var c && c != IntPtr.Zero ? c : Add(@"\Processor(*)\% Processor Time");
         _gpuEngines = Add(@"\GPU Engine(*engtype_3D)\Utilization Percentage");
         _gpuMemory = Add(@"\GPU Adapter Memory(*)\Dedicated Usage");
+        _perf = Add(@"\Processor Information(_Total)\% Processor Performance");
         PdhCollectQueryData(_query); // primeira coleta: contadores de taxa precisam de duas leituras
     }
 
@@ -77,6 +84,7 @@ public sealed class PdhSampler : IDisposable
     public UsageSample Sample(double? fps = null, double? low1 = null)
     {
         PdhCollectQueryData(_query);
+        LastPerformancePercent = _perf == IntPtr.Zero ? null : Single(_perf);
         var cpu = Single(_cpuTotal);
         var cores = Array(_cpuCores).Where(c => !c.name.Contains("_Total", StringComparison.OrdinalIgnoreCase)).Select(c => c.value).ToList();
 

@@ -47,9 +47,30 @@ public sealed partial class GameScanner(IRegistryStore registry, string? program
         games.AddRange(Safe(ScanApps));
         return games
             .Where(g => Directory.Exists(g.InstallDir))
+            .Select(g => g.AntiCheat is null && DetectAntiCheat(g.InstallDir) is { } ac ? g with { AntiCheat = ac } : g)
             .GroupBy(g => g.Id).Select(g => g.First())
             .OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
+    }
+
+    /// <summary>Anti-cheat pela pasta que ele instala junto do jogo (só lista diretórios, não abre nada).</summary>
+    public static string? DetectAntiCheat(string installDir)
+    {
+        try
+        {
+            var dirs = Directory.EnumerateDirectories(installDir)
+                .Concat(Directory.EnumerateDirectories(installDir).SelectMany(d => SafeDirs(d)))
+                .Select(Path.GetFileName).ToList();
+            if (dirs.Any(d => d!.StartsWith("EasyAntiCheat", StringComparison.OrdinalIgnoreCase))) return "Easy Anti-Cheat";
+            if (dirs.Any(d => d!.Equals("BattlEye", StringComparison.OrdinalIgnoreCase))) return "BattlEye";
+        }
+        catch (IOException) { } catch (UnauthorizedAccessException) { }
+        return null;
+
+        static IEnumerable<string> SafeDirs(string d)
+        {
+            try { return Directory.EnumerateDirectories(d).ToList(); } catch { return []; }
+        }
     }
 
     private static IEnumerable<InstalledGame> Safe(Func<IEnumerable<InstalledGame>> f)
@@ -66,6 +87,8 @@ public sealed partial class GameScanner(IRegistryStore registry, string? program
         "228980", // Steamworks Common Redistributables
         "1070560", "1391110", "1628350", // Steam Linux Runtime
         "250820", // SteamVR
+        "431960", // Wallpaper Engine (programa, não jogo)
+        "1905180", // OBS Studio pela Steam (tratado como app de live)
     };
 
     public IEnumerable<InstalledGame> ScanSteam()
@@ -122,6 +145,10 @@ public sealed partial class GameScanner(IRegistryStore registry, string? program
         if (r.TryGetProperty("bIsIncompleteInstall", out var inc) && inc.ValueKind == JsonValueKind.True) return null;
         var app = S("AppName"); var loc = S("InstallLocation");
         if (string.IsNullOrEmpty(app) || string.IsNullOrEmpty(loc)) return null;
+        // Conteúdos/DLC (ex.: "Conteúdo do Fortnite: Salve o Mundo") têm manifesto próprio apontando para o jogo principal
+        if (S("MainGameAppName") is { Length: > 0 } main && !main.Equals(app, StringComparison.OrdinalIgnoreCase)) return null;
+        if (r.TryGetProperty("AppCategories", out var cats) && cats.ValueKind == JsonValueKind.Array
+            && cats.EnumerateArray().Any(c => c.GetString() is "addons" or "addons/launchable" or "digitalextras" or "plugins" or "engines")) return null;
         var exe = S("LaunchExecutable");
         return new InstalledGame($"epic:{app.ToLowerInvariant()}", S("DisplayName") ?? app, GameStore.Epic, Native(loc),
             string.IsNullOrEmpty(exe) ? null : Path.Combine(loc, exe),
@@ -191,12 +218,16 @@ public sealed class GameService(GameScanner scanner, IProcessProbe processes, Op
     public static GameService CreateDefault(OptimizationService optimizer) =>
         new(new GameScanner(new WindowsRegistryStore()), new ProcessProbe(), optimizer);
 
-    public IReadOnlyList<GameReport> Analyze(Core.Hardware.HardwareProfile hw) =>
-        scanner.Scan().Select(g => Report(g, hw)).ToList();
+    public IReadOnlyList<GameReport> Analyze(Core.Hardware.HardwareProfile hw, IReadOnlyList<Core.Health.DiskHealthData>? disks = null) =>
+        scanner.Scan().Select(g => Report(g, hw, disks)).ToList();
 
-    public GameReport Report(InstalledGame game, Core.Hardware.HardwareProfile hw)
+    /// <summary>Pasta das medições do Snow Monitor (para mostrar a última medição de cada jogo).</summary>
+    public string? BenchDir { get; init; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SnowBench");
+
+    public GameReport Report(InstalledGame game, Core.Hardware.HardwareProfile hw, IReadOnlyList<Core.Health.DiskHealthData>? disks = null)
     {
-        var profile = _profiles.FirstOrDefault(p => p.GameId.Equals(game.Id, StringComparison.OrdinalIgnoreCase));
+        var profile = _profiles.FirstOrDefault(p => p.GameId.Equals(game.Id, StringComparison.OrdinalIgnoreCase)
+                                                 || p.Aliases.Contains(game.Id, StringComparer.OrdinalIgnoreCase));
         var running = profile is not null && processes.IsRunning(profile.Processes);
         var ctx = LoadContext(game, hw, profile, running);
         var findings = new List<GameFinding>();
@@ -206,10 +237,57 @@ public sealed class GameService(GameScanner scanner, IProcessProbe processes, Op
             catch (Exception e) { findings.Add(new(FindingLevel.Info, "Não foi possível ler a configuração", e.Message)); }
         }
         if (!game.Id.StartsWith("app:", StringComparison.Ordinal)) // disco/GPU híbrida não se aplicam ao OBS
+        {
+            if (profile is null && UnrealConfig(game) is { } ue)
+                try { findings.AddRange(UnrealConfigAdvisor.Analyze(IniValueExecutor.ReadText(ue), hw.MonitorRefreshHz)); } catch (IOException) { }
+            if (LastMeasurement(game) is { } m) findings.Insert(0, m);
+            if (MeasuredInsight.DiskHealth(game, hw, disks) is { } dh) findings.Insert(0, dh);
             findings.AddRange(GenericGameAdvisor.Analyze(game, hw, running));
+        }
         else if (running)
             findings.Add(new(FindingLevel.Info, "Aberto agora", "Feche o programa para aplicar a predefinição."));
         return new GameReport(game, profile, ctx, findings);
+    }
+
+    /// <summary>Última sessão do Monitor para este jogo (arquivo &lt;chave&gt;-uso-*.csv mais recente).</summary>
+    private GameFinding? LastMeasurement(InstalledGame game)
+    {
+        try
+        {
+            if (BenchDir is null || !Directory.Exists(BenchDir) || MeasuredInsight.MonitorKey(game) is not { } key) return null;
+            var file = new DirectoryInfo(BenchDir).EnumerateFiles($"{key}-uso-*.csv").OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault();
+            if (file is null) return null;
+            var csv = File.ReadAllText(file.FullName);
+            return MeasuredInsight.FromUsageCsv(csv) is { } s ? MeasuredInsight.Finding(s, file.LastWriteTime, MeasuredInsight.FpsColumn(csv)) : null;
+        }
+        catch (IOException) { return null; }
+    }
+
+    /// <summary>
+    /// GameUserSettings.ini de um jogo Unreal 4/5 qualquer: o projeto é a pasta que tem Binaries\Win64 dentro da instalação
+    /// (ex.: …\Brickadia\Brickadia\Binaries\Win64) e a configuração fica em %LOCALAPPDATA%\&lt;Projeto&gt;\Saved\Config.
+    /// </summary>
+    public static string? UnrealConfig(InstalledGame game, string? localAppData = null)
+    {
+        try
+        {
+            if (!Directory.Exists(game.InstallDir)) return null;
+            localAppData ??= Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            foreach (var project in Directory.EnumerateDirectories(game.InstallDir))
+            {
+                var name = Path.GetFileName(project);
+                if (name.Equals("Engine", StringComparison.OrdinalIgnoreCase) || !Directory.Exists(Path.Combine(project, "Binaries", "Win64"))) continue;
+                var cfg = Path.Combine(localAppData, name, "Saved", "Config");
+                if (!Directory.Exists(cfg)) continue;
+                foreach (var sub in new[] { "Windows", "WindowsNoEditor", "WindowsClient" })
+                {
+                    var f = Path.Combine(cfg, sub, "GameUserSettings.ini");
+                    if (File.Exists(f)) return f;
+                }
+            }
+        }
+        catch (IOException) { } catch (UnauthorizedAccessException) { }
+        return null;
     }
 
     private static GameContext LoadContext(InstalledGame game, Core.Hardware.HardwareProfile hw, IGameProfile? profile, bool running)

@@ -137,6 +137,9 @@ public sealed class GamesViewModel : ObservableObject
     public string AltoCaption => IsObs ? "720p60 · mínimo de FPS perdido" : "Competitivo · menor latência";
     public int ChangeCount => Changes.Count(c => c.Changes);
 
+    /// <summary>Discos do Snow Health (jogo instalado em disco com erro).</summary>
+    public Func<IReadOnlyList<Snow.Core.Health.DiskHealthData>?>? DiskHealth { get; set; }
+
     public async Task LoadAsync(HardwareProfile hw)
     {
         _hw = hw;
@@ -152,7 +155,7 @@ public sealed class GamesViewModel : ObservableObject
         try
         {
             var hw = _hw;
-            var reports = await Task.Run(() => _service.Analyze(hw));
+            var reports = await Task.Run(() => _service.Analyze(hw, DiskHealth?.Invoke()));
             Games.Clear();
             foreach (var r in reports.OrderByDescending(r => r.Profile is not null).ThenBy(r => r.Game.Name))
                 Games.Add(new GameItemViewModel(r));
@@ -221,7 +224,7 @@ public sealed class GamesViewModel : ObservableObject
                 _ => $"Falhou: {t?.Messages.LastOrDefault()}",
             };
             MessageBox.Show(text, "Snow Gaming", MessageBoxButton.OK, t?.Status is TweakStatus.Applied or TweakStatus.PartiallyApplied ? MessageBoxImage.Information : MessageBoxImage.Warning);
-            Selected.Update(_service.Report(r.Game, _hw));
+            Selected.Update(_service.Report(r.Game, _hw, DiskHealth?.Invoke()));
             Refresh();
             _afterApply();
         }

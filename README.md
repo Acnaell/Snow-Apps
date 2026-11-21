@@ -30,6 +30,8 @@ O Snow identifica os jogos instalados (**Steam**, **Epic Games** e **Riot**), mo
 | League of Legends | Edita com backup | `game.cfg`: só as opções gráficas que o LoL mantém locais (as sincronizadas com a conta ficam de fora) + VSync |
 | Valorant | Diagnóstico + passo a passo | Lê `RiotUserSettings.ini` (ex.: renderização multithread desligada) e orienta no menu; não edita porque as configurações são sincronizadas com a conta |
 | OBS Studio (live) | Edita com backup | `basic.ini` do perfil ativo: codificador da placa de vídeo (AMD AMF / NVENC / Quick Sync) no lugar do x264, 6000 kbps, saída 720p60 ("jogo em primeiro lugar") ou 936p60 ("live mais nítida"). No modo Avançado, orienta o codificador passo a passo |
+| Rocket League | Edita com backup | `TASystemSettings.ini`: VSync, desfoque, bloom, profundidade de campo, reflexos; FPS Alto também tira sombras dinâmicas. Só mexe em chaves que o jogo já gravou |
+| Qualquer jogo Unreal Engine 4/5 | Diagnóstico | Acha o `GameUserSettings.ini` sozinho e aponta VSync, limite de FPS, resolução dinâmica e resolução 3D baixa |
 | Outros jogos | Diagnóstico básico | Instalação em HDD, notebook com duas GPUs, jogo aberto |
 
 Toda predefinição mostra uma prévia **"atual → novo"** com o motivo de cada opção, grava o valor original no backup e preserva o resto do arquivo byte a byte.
@@ -52,6 +54,8 @@ Nota de saúde de 0 a 100, **somente leitura** e sem drivers. Ela cobre:
 
 Cada achado vem com "O que fazer".
 
+Em todos os jogos, o Snow também mostra **a última medição do Monitor** (FPS e se o jogo ficou preso no processador ou na placa de vídeo), avisa se o jogo está **num disco com erros no SMART** e detecta **Easy Anti-Cheat / BattlEye** pela pasta do jogo. Conteúdos extras da Epic (DLC) e programas da Steam (Wallpaper Engine) não aparecem mais como jogos.
+
 ## Snow Monitor
 - **Uso em tempo real** pelos contadores do Windows (PDH): CPU, núcleo mais ocupado, GPU 3D, VRAM e RAM.
 - **Modo automático (padrão)**: o PresentMon observa todos os processos e o Snow detecta sozinho o jogo na tela (pelo nome do executável; navegador, Discord, OBS, papel de parede animado e launchers são ignorados). Funciona com qualquer jogo, não só os que têm perfil.
@@ -62,6 +66,11 @@ Cada achado vem com "O que fazer".
 - **Comparar antes e depois**: abre duas capturas `.csv` (Snow Bench ou sessões do Monitor) e mostra a diferença.
 
 Inspirações: [ResetExplode](https://github.com/GustavoReset/ResetExplode) (MIT) e [WinForge](https://github.com/guilhermehenn/winforge) (GPL-3.0, só ideias; nenhum código copiado). Diferente deles, o Snow não usa drivers de kernel (nem PawnIO/WinRing0), para conviver com o Riot Vanguard.
+
+## Pontuação e estresse
+- **Pontuação**: processador em 1 núcleo e em todas as threads (pontos Snow), banda e latência da memória, leitura/escrita sequencial e 4K aleatório de cada disco (sem cache do Windows). Histórico em `Documentos\SnowBench` e diferença em % para a rodada anterior: rode antes e depois de um upgrade.
+- **Estresse** (1 a 60 min): carga máxima no processador e na memória **com conferência**: cada cálculo tem resultado conhecido e cada byte de RAM testado é verificado. Mostra erros de cálculo (instabilidade), erros de memória (pente com defeito) e **queda de clock** ao longo do teste (temperatura ou limite de energia), pelo contador "% Processor Performance" do Windows.
+- Sem drivers de kernel; a pontuação da placa de vídeo fica para uma próxima versão.
 
 ## Perfis do Windows
 
@@ -153,7 +162,7 @@ Os runners do GitHub são Windows Server (mesmo kernel do Windows 10/11 desktop,
 
 ## Roadmap
 - ~~Otimização por jogo (FPS Médio / FPS Alto)~~ ✅ v0.2: Fortnite, League of Legends, Valorant. Próximos: CS2, Apex Legends, Minecraft, Rocket League.
-- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4 · ~~Atualizador~~ ✅ v0.5 · ~~OBS Studio~~ ✅ v0.6 · ~~Detecção automática do jogo e upgrade sem gargalo~~ ✅ v0.7
+- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4 · ~~Atualizador~~ ✅ v0.5 · ~~OBS Studio~~ ✅ v0.6 · ~~Detecção automática do jogo e upgrade sem gargalo~~ ✅ v0.7 · ~~Pontuação e estresse, Rocket League, qualquer jogo Unreal~~ ✅ v0.8
 - Overlay no jogo (janela transparente, sem injeção) e histórico de sessões.
 - Mais jogos: CS2, Apex Legends, Minecraft, Rocket League.
 - Perfis de driver (NVIDIA/AMD) por jogo.

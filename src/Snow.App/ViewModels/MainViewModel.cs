@@ -47,7 +47,9 @@ public sealed class MainViewModel : ObservableObject
         Games = new GamesViewModel(_service, _log, LoadBackups);
         Health = new HealthViewModel(_log);
         Monitor = new MonitorViewModel(_log);
+        Bench = new BenchViewModel(_log);
         Monitor.DiskHealth = () => Health.LastReport?.Data.Disks;
+        Games.DiskHealth = () => Health.LastReport?.Data.Disks;
         Health.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(HealthViewModel.HasReport)) Monitor.RefreshUpgrades(); };
         _updater = new Snow.Platform.Updates.UpdateService(_log);
         _updater.CleanupOldFiles();
@@ -78,6 +80,7 @@ public sealed class MainViewModel : ObservableObject
     public GamesViewModel Games { get; }
     public HealthViewModel Health { get; }
     public MonitorViewModel Monitor { get; }
+    public BenchViewModel Bench { get; }
 
     // ───────────── Atualizações ─────────────
     private readonly Snow.Platform.Updates.UpdateService _updater;
@@ -190,10 +193,11 @@ public sealed class MainViewModel : ObservableObject
             BuildPlan(rec.Profile);
             _log.Info($"Diagnóstico concluído: {_hw.Cpu.Name} · {_hw.PrimaryGpu?.Name} ({Report.Gb(_hw.PrimaryGpu?.VramBytes ?? 0)}) · {_hw.Os.FriendlyName}");
             foreach (var w in _hw.CollectionWarnings) _log.Info("Aviso de coleta: " + w);
-            BusyText = "Procurando jogos instalados…";
-            await Games.LoadAsync(_hw);
             BusyText = "Snow Health: lendo discos e registros de eventos…";
             await Health.LoadAsync();
+            BusyText = "Procurando jogos instalados…";
+            await Games.LoadAsync(_hw);
+            Bench.Init(_hw, Health.LastReport?.Data.Disks);
             Monitor.RefreshUpgrades();
         }
         catch (Exception e)
