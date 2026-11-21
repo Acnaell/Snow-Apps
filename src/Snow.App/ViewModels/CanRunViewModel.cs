@@ -16,7 +16,9 @@ public sealed class CanRunRow(CanRunResult r, bool installed, string? measured)
     public string Level => r.Level.Label();
     public CanRunLevel LevelValue => r.Level;
     public bool IsBelow => r.Level == CanRunLevel.Abaixo;
-    public bool IsMin => r.Level == CanRunLevel.Minimo;
+    public bool IsMin => r.Level is CanRunLevel.Minimo or CanRunLevel.Perto;
+    public string Comparison => r.Comparison;
+    public bool HasComparison => r.Comparison.Length > 0;
     public bool IsGood => r.Level >= CanRunLevel.Recomendado;
     public string Verdict => r.Verdict;
     public string Detail => r.Detail;

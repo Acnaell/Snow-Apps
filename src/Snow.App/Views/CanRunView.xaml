@@ -21,6 +21,8 @@
                                     </StackPanel>
                                     <TextBlock Text="{Binding Verdict}" Style="{StaticResource Body}" Margin="0,4,0,0"/>
                                     <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding Comparison}" Style="{StaticResource Caption}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,0,0"
+                                               Visibility="{Binding HasComparison, Converter={StaticResource BoolVis}}"/>
                                     <TextBlock Text="{Binding Measured}" Style="{StaticResource Caption}" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Margin="0,4,0,0"
                                                Visibility="{Binding HasMeasured, Converter={StaticResource BoolVis}}"/>
                                     <TextBlock Text="{Binding Note}" Style="{StaticResource Caption}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,4,0,0"

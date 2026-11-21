@@ -45,3 +45,24 @@ public static class SteamReqTests
         Assert.Equal(1245620L, SteamStore.ParseSearch(search.RootElement)[0].AppId);
     }
 }
+
+public static class InflatedReqTests
+{
+    // SpeedRunners 2 na Steam: mínimo = recomendado = Ryzen 5 1600 / i3-8100 + GTX 1660 Super + 16 GB (jogo 2D)
+    private const string Sr2 = "<li><strong>Processor:</strong> Ryzen 5 1600, Core i3-8100<br></li><li><strong>Memory:</strong> 16 GB RAM<br></li><li><strong>Graphics:</strong> GTX 1660 Super<br></li>";
+
+    [Test] public static void InflatedMinimumIsFlaggedAndNumbersShown()
+    {
+        var g = SteamRequirements.Parse(3183760, "SpeedRunners 2: King of Speed", Sr2, Sr2)!;
+        var hw = Snow.Tests.Hw.Desktop(h => h with
+        {
+            Cpu = new Snow.Core.Hardware.CpuInfo { Name = "Intel(R) Xeon(R) CPU E5-2620 v3 @ 2.40GHz", LogicalProcessors = 12, MaxClockMhz = 2400 },
+            Gpus = [new Snow.Core.Hardware.GpuInfo { Name = "AMD Radeon RX 580 2048SP", VramBytes = 8L << 30, IsDiscrete = true }],
+            Memory = new Snow.Core.Hardware.MemoryInfo { TotalBytes = 16L << 30 },
+        });
+        var r = CanRun.Evaluate(g, hw);
+        Assert.Equal(CanRunLevel.Perto, r.Level, r.Detail);
+        Assert.True(r.Detail.Contains("máquina em que testaram"), r.Detail);
+        Assert.True(r.Comparison.Contains("seu 74 × pedido 86 (−14%)") && r.Comparison.Contains("sua 88 × pedida 127 (−31%)"), r.Comparison);
+    }
+}

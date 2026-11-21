@@ -49,10 +49,11 @@ public static class CanRunTests
         Assert.True(r["fortnite"].Missing.Any(m => m.StartsWith("processador")), "Épico: falta processador");
         Assert.Equal(CanRunLevel.Recomendado, r["lol"].Level);
         Assert.Equal(CanRunLevel.Recomendado, r["valorant"].Level, "144 FPS pede i5-9400F/R5 2600X");
-        Assert.Equal(CanRunLevel.Abaixo, r["marvelrivals"].Level, r["marvelrivals"].Detail);
+        Assert.True(r["marvelrivals"].Level <= CanRunLevel.Perto, r["marvelrivals"].Detail);
         Assert.True(r["marvelrivals"].Missing.Single().StartsWith("processador"), "só o processador fica abaixo");
         // E5-2620 v3 a ~2,9 GHz efetivos fica abaixo de um Ryzen 5 1600 (mínimo do Cyberpunk 2.0)
-        Assert.Equal(CanRunLevel.Abaixo, r["cyberpunk"].Level, r["cyberpunk"].Detail);
+        Assert.Equal(CanRunLevel.Perto, r["cyberpunk"].Level, r["cyberpunk"].Detail);
+        Assert.True(r["cyberpunk"].Comparison.Contains("seu 74 × pedido 86"), r["cyberpunk"].Comparison);
         Assert.True(r["cyberpunk"].Missing.Single().StartsWith("processador"));
         Assert.Equal(CanRunLevel.Recomendado, r["cs2"].Level, "passa o mínimo com folga");
     }

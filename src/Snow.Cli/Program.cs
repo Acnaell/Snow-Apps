@@ -400,13 +400,13 @@ public static class Program
             var req = steam.RequirementsAsync(hits[0].AppId).GetAwaiter().GetResult();
             if (req is null) { Console.WriteLine($"{hits[0].Name} não informa requisitos de PC."); return 4; }
             var res = Snow.Core.Compat.CanRun.Evaluate(req, hw);
-            Console.WriteLine($"\n{req.Name}: [{Snow.Core.Compat.CanRun.Label(res.Level)}] {res.Verdict}\n  {res.Detail}\n  {req.Note}");
+            Console.WriteLine($"\n{req.Name}: [{Snow.Core.Compat.CanRun.Label(res.Level)}] {res.Verdict}\n  {res.Detail}\n  {res.Comparison}\n  {req.Note}");
             foreach (var t in req.Tiers) Console.WriteLine($"  {t.Name}: CPU {string.Join(" / ", t.Cpus)} (índice {t.CpuIndex?.ToString() ?? "?"}) · GPU {string.Join(" / ", t.Gpus)} (índice {t.GpuIndex?.ToString() ?? "?"}) · {t.RamGb:0} GB");
             return 0;
         }
         Console.WriteLine($"{hw.Cpu.Name} → índice {Snow.Core.Compat.HardwareIndex.Cpu(hw.Cpu)?.ToString() ?? "?"} · {hw.PrimaryGpu?.Name} → índice {Snow.Core.Compat.HardwareIndex.Gpu(hw.PrimaryGpu?.Name)?.ToString() ?? "?"} · {hw.Memory.TotalGb:0} GB\n");
         foreach (var r in Snow.Core.Compat.CanRun.EvaluateAll(hw).OrderByDescending(r => r.Level))
-            Console.WriteLine($"[{Snow.Core.Compat.CanRun.Label(r.Level),-15}] {r.Game.Name,-24} {r.Verdict}\n{"",18}{r.Detail}");
+            Console.WriteLine($"[{Snow.Core.Compat.CanRun.Label(r.Level),-15}] {r.Game.Name,-24} {r.Verdict}\n{"",18}{r.Detail}\n{"",18}{r.Comparison}");
         return 0;
     }
 

@@ -19,11 +19,12 @@ public sealed record ReqTier(
 
 public sealed record GameRequirements(string Id, string Name, string MonitorKey, string Source, IReadOnlyList<ReqTier> Tiers, string? Note = null);
 
-public enum CanRunLevel { Abaixo, Minimo, Recomendado, Alto }
+/// <summary>Perto = abaixo do mínimo publicado, mas por pouco (ou o mínimo publicado parece exagerado): deve rodar no baixo.</summary>
+public enum CanRunLevel { Abaixo, Perto, Minimo, Recomendado, Alto }
 
 public sealed record CanRunResult(
     GameRequirements Game, CanRunLevel Level, ReqTier? Reached, ReqTier? Next,
-    string Verdict, string Detail, IReadOnlyList<string> Missing, double? Headroom);
+    string Verdict, string Detail, IReadOnlyList<string> Missing, double? Headroom, string Comparison = "");
 
 /// <summary>
 /// "Roda no meu PC?": compara o hardware com os requisitos oficiais (fontes em cada jogo).
@@ -130,6 +131,9 @@ public static class CanRun
         return (missing.Count == 0, missing, ratios.Count == 0 ? 1 : ratios.Min());
     }
 
+    private static bool SameSpec(ReqTier a, ReqTier b) =>
+        a.CpuIndex == b.CpuIndex && a.GpuIndex == b.GpuIndex && Math.Abs(a.RamGb - b.RamGb) < 0.1 && (a.CpuIndex is not null || a.GpuIndex is not null);
+
     private static string Example(string[] names, string fallback) => names.Length == 0 ? fallback : string.Join(" ou ", names.Take(2));
 
     public static CanRunResult Evaluate(GameRequirements game, HardwareProfile hw)
@@ -156,9 +160,26 @@ public static class CanRun
         // só o mínimo publicado (CS2): com folga grande, avisa que deve rodar bem acima disso
         if (game.Tiers.Count == 1 && level == CanRunLevel.Minimo && headroom >= 1.4) level = CanRunLevel.Recomendado;
 
+        // Mínimo idêntico ao recomendado = o estúdio publicou a máquina de testes, não um mínimo de verdade
+        var inflated = game.Tiers.Count >= 2 && SameSpec(game.Tiers[0], game.Tiers[1]);
+        var target = next ?? reached ?? game.Tiers[0];
+        double? cpuRatio = cpu is { } c1 && target.CpuIndex is > 0 and var rc ? (double)c1 / rc : null;
+        double? gpuRatio = gpu is { } g1 && target.GpuIndex is > 0 and var rg ? (double)g1 / rg : null;
+        if (level == CanRunLevel.Abaixo && missing.All(m => m.StartsWith("processador") || m.StartsWith("placa de vídeo")))
+        {
+            var floor = inflated ? 0.65 : 0.8; // até 20% abaixo (35% se o mínimo for exagerado) ainda deve rodar no baixo
+            if ((cpuRatio ?? 1) >= floor && (gpuRatio ?? 1) >= floor) level = CanRunLevel.Perto;
+        }
+        static string Pct(double r) => r >= 1 ? $"+{(r - 1) * 100:0}%" : $"−{(1 - r) * 100:0}%";
+        var cmp = new List<string>();
+        if (cpu is not null && target.CpuIndex is > 0) cmp.Add($"Processador: seu {cpu} × pedido {target.CpuIndex} ({Pct(cpuRatio!.Value)})");
+        if (gpu is not null && target.GpuIndex is > 0) cmp.Add($"Placa de vídeo: sua {gpu} × pedida {target.GpuIndex} ({Pct(gpuRatio!.Value)})");
+        var comparison = cmp.Count == 0 ? "" : $"{string.Join(" · ", cmp)} (nível {target.Name.ToLowerInvariant()})";
+
         var verdict = level switch
         {
-            CanRunLevel.Abaixo => "Abaixo do mínimo",
+            CanRunLevel.Abaixo => inflated ? "Abaixo do requisito publicado" : "Abaixo do mínimo",
+            CanRunLevel.Perto => "Perto do mínimo · deve rodar no baixo",
             CanRunLevel.Minimo => $"Roda no mínimo · {reached!.Label}",
             CanRunLevel.Recomendado => game.Tiers.Count == 1 ? "Roda com folga" : $"Roda no recomendado · {reached!.Label}",
             _ => $"Roda no {reached!.Name.ToLowerInvariant()} · {reached!.Label}",
@@ -166,13 +187,17 @@ public static class CanRun
         string detail;
         if (next is null)
             detail = game.Tiers.Count == 1 ? $"Passa o mínimo oficial com folga ({headroom:0.0}× o exigido)." : "Atende todos os níveis publicados pelo fabricante.";
+        else if (reached is null && level == CanRunLevel.Perto)
+            detail = $"Um pouco abaixo do que o fabricante pede ({string.Join(", ", missing)}), mas perto o bastante para rodar com gráficos no baixo.";
         else if (reached is null)
             detail = $"Falta: {string.Join(", ", missing)}. Pode até abrir, mas o fabricante não garante.";
         else
             detail = $"Para o {next.Name.ToLowerInvariant()} ({next.Label}) falta: {string.Join(", ", missing)}.";
         if (cpu is null || gpu is null)
             detail += $" Não reconheci {(cpu is null ? "o processador" : "a placa de vídeo")} na tabela do Snow: comparação parcial.";
-        return new(game, level, reached, next, verdict, detail, missing, headroom);
+        if (inflated)
+            detail += " O estúdio publicou o mesmo requisito no mínimo e no recomendado: isso costuma ser a máquina em que testaram, não o mínimo real. Vale testar.";
+        return new(game, level, reached, next, verdict, detail, missing, headroom, comparison);
     }
 
     public static IReadOnlyList<CanRunResult> EvaluateAll(HardwareProfile hw) => Catalog.Select(g => Evaluate(g, hw)).ToList();
@@ -180,6 +205,7 @@ public static class CanRun
     public static string Label(this CanRunLevel l) => l switch
     {
         CanRunLevel.Abaixo => "Não recomendado",
+        CanRunLevel.Perto => "Perto do mínimo",
         CanRunLevel.Minimo => "Mínimo",
         CanRunLevel.Recomendado => "Recomendado",
         _ => "Máximo",
