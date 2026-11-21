@@ -311,6 +311,7 @@ jobs:
           Get-ChildItem dist/*.zip | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
             Set-Content -Encoding ascii dist/SHA256SUMS.txt
           Write-Host "OK: atualiza com pacote verificado e recusa SHA-256 errado"
+          $global:LASTEXITCODE = 0   # o código 1 acima era a recusa esperada
 
       - uses: actions/upload-artifact@v4
         with:
