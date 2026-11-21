@@ -47,6 +47,7 @@ public sealed class ExecutorSet(IEnumerable<IActionExecutor> executors)
         new StartupExecutor(new StartupManager(reg)),
         new IndexingExecutor(),
         new CleanupExecutor(),
+        new Games.IniValueExecutor(new Games.ProcessProbe()),
     ]);
 }
 

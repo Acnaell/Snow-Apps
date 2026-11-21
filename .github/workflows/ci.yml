@@ -69,6 +69,13 @@ jobs:
           & $cli diagnose --json | Out-File -Encoding utf8 diagnose-${{ matrix.os }}.json
           Get-Content diagnose-${{ matrix.os }}.json -Raw | ConvertFrom-Json | Out-Null   # JSON válido?
 
+      - name: Identificador de jogos (runner sem jogos → lista vazia, sem erro)
+        shell: pwsh
+        run: |
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow-cli.exe"
+          & $cli games
+          if ($LASTEXITCODE -ne 0) { throw "games falhou" }
+
       - name: Plano de cada perfil
         shell: pwsh
         run: |

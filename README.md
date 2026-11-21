@@ -3,7 +3,8 @@
 </p>
 
 <p align="center">
-  <b>Diagnóstico de hardware e otimizações reais, seguras e reversíveis para jogos no Windows 10 e 11.</b><br>
+  <b>Snow Apps — um kit para o seu PC: <i>Snow Gaming</i> (otimização), <i>Snow Health</i> (saúde, em breve) e <i>Snow Monitor</i> (desempenho, em breve).</b><br>
+  Diagnóstico de hardware e otimizações reais, seguras e reversíveis para jogos no Windows 10 e 11.<br>
   C# · .NET 8 · WPF · zero dependências externas · modo escuro
 </p>
 
@@ -17,7 +18,31 @@
 4. **Aplica com backup**: antes de cada mudança, o valor original é gravado (backup incremental em JSON e, opcionalmente, um ponto de restauração do Windows).
 5. **Reverte tudo** com um clique, devolvendo exatamente os valores originais.
 
-## Perfis
+## Snow Gaming · Jogos
+O Snow identifica os jogos instalados (**Steam**, **Epic Games** e **Riot**), mostra **pontos de melhora** de cada um e oferece duas predefinições ajustadas ao nível do seu hardware e à taxa do seu monitor:
+
+- **FPS Médio**: qualidade e estabilidade.
+- **FPS Alto**: competitivo, com menor latência.
+
+| Jogo | Suporte | O que o Snow faz |
+|---|---|---|
+| Fortnite | Edita com backup | `GameUserSettings.ini`: modo Performance, resolução 3D, qualidades, VSync, limite de FPS = monitor, Reflex (NVIDIA) |
+| League of Legends | Edita com backup | `game.cfg`: só as opções gráficas que o LoL mantém locais (as sincronizadas com a conta ficam de fora) + VSync |
+| Valorant | Diagnóstico + passo a passo | Lê `RiotUserSettings.ini` (ex.: renderização multithread desligada) e orienta no menu; não edita porque as configurações são sincronizadas com a conta |
+| Outros jogos | Diagnóstico básico | Instalação em HDD, notebook com duas GPUs, jogo aberto |
+
+Toda predefinição mostra uma prévia **"atual → novo"** com o motivo de cada opção, grava o valor original no backup e preserva o resto do arquivo byte a byte.
+
+### Jogos com anti-cheat (Riot Vanguard, Easy Anti-Cheat, BattlEye)
+O Snow foi desenhado para conviver com anti-cheats:
+- **Nunca** abre, injeta, lê memória ou muda a prioridade do processo do jogo. Para saber se o jogo está aberto, só consulta o **nome** na lista de processos.
+- **Não** cria regras por executável (IFEO, compatibilidade, afinidade).
+- **Só** edita arquivos de configuração do usuário, e apenas com o jogo e o launcher **fechados**.
+- **Nenhum** driver de kernel. O Vanguard bloqueia drivers vulneráveis como o WinRing0, usado por muitos monitores de temperatura.
+- Jogos com configurações sincronizadas na conta (Valorant) ficam somente leitura.
+- O Snow detecta o Vanguard pelo próprio arquivo de instalação da Riot (`vanguard: true`).
+
+## Perfis do Windows
 
 | | Alto Desempenho (Competitivo) | Desempenho | Equilibrado |
 |---|---|---|---|
@@ -71,6 +96,8 @@ snow-cli apply    --profile <perfil> [--yes] [--only ids] [--skip ids] [--no-res
 snow-cli restore  [--latest | --id <id> | --all]
 snow-cli backups | snow-cli startup | snow-cli purge-standby
 snow-cli selftest --profile <perfil>     # aplica → verifica → restaura → confere estado idêntico
+snow-cli games [--preset alto|medio]     # jogos, pontos de melhora e prévia
+snow-cli game-apply --id riot:league_of_legends --preset alto
 ```
 
 ## Compatibilidade e testes
@@ -88,12 +115,15 @@ Os runners do GitHub são Windows Server (mesmo kernel do Windows 10/11 desktop,
 |---|---|
 | ![Diagnóstico](docs/screenshots/1-diagnostico-dark.png) | ![Diagnóstico](docs/screenshots/1-diagnostico-light.png) |
 | ![Otimizar](docs/screenshots/2-otimizar-dark.png) | ![Otimizar](docs/screenshots/2-otimizar-light.png) |
-| ![Inicialização](docs/screenshots/3-inicializacao-dark.png) | ![Restaurar](docs/screenshots/4-restaurar-dark.png) |
+| ![Jogos](docs/screenshots/3-jogos-dark.png) | ![Jogos](docs/screenshots/3-jogos-light.png) |
+| ![Snow Health](docs/screenshots/5-health-dark.png) | ![Restaurar](docs/screenshots/7-restaurar-dark.png) |
 
 > As capturas vêm de um runner sem GPU física; num PC real, os cartões mostram sua CPU, GPU, RAM e discos.
 
 ## Roadmap
-- **Próxima versão: otimização por jogo.** Detectar os jogos instalados (Steam/Epic) e, com base no hardware, oferecer predefinições **FPS médio** (qualidade/estabilidade) e **FPS alto** (competitivo) para cada jogo. Isso inclui os arquivos de configuração do jogo, opções de inicialização e ajustes conhecidos da comunidade, sempre com backup e reversão como no restante do app.
+- ~~Otimização por jogo (FPS Médio / FPS Alto)~~ ✅ v0.2: Fortnite, League of Legends, Valorant. Próximos: CS2, Apex Legends, Minecraft, Rocket League.
+- **Snow Health**: saúde dos discos (SMART), bateria, confiabilidade do Windows, drivers, nota de saúde.
+- **Snow Monitor**: uso em tempo real, FPS/frametime por ETW, sessões de jogo e gargalos, sem drivers.
 - Perfis de driver (NVIDIA/AMD) por jogo.
 - Agendamento: reaplicar após grandes atualizações do Windows.
 

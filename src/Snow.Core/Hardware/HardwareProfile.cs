@@ -42,6 +42,8 @@ public sealed record GpuInfo
     /// <summary>Major do WDDM derivado da versão do driver (27 = WDDM 2.7, 31 = WDDM 3.1...).</summary>
     public int WddmMajorFromDriver { get; init; }
     public string PnpDeviceId { get; init; } = "";
+    /// <summary>Taxa de atualização atual da saída de vídeo (Hz); 0 se desconhecida.</summary>
+    public int RefreshRateHz { get; init; }
 
     /// <summary>HAGS exige WDDM 2.7+ e GPU NVIDIA Pascal+, AMD RDNA (RX 5000+) ou Intel Arc.</summary>
     public bool SupportsHags => !IsVirtual && WddmMajorFromDriver >= 27 && GpuGenerations.SupportsHags(this);
@@ -137,6 +139,9 @@ public sealed record HardwareProfile
     public SystemState State { get; init; } = new();
     public DateTime CollectedAtUtc { get; init; } = DateTime.UtcNow;
     public IReadOnlyList<string> CollectionWarnings { get; init; } = [];
+
+    /// <summary>Maior taxa de atualização entre as saídas de vídeo ativas (Hz); 0 se desconhecida.</summary>
+    public int MonitorRefreshHz => Gpus.Where(g => !g.IsVirtual && g.RefreshRateHz is >= 30 and <= 1000).Select(g => g.RefreshRateHz).DefaultIfEmpty(0).Max();
 
     /// <summary>GPU principal para jogos: dedicada com mais VRAM, senão a primeira não virtual.</summary>
     public GpuInfo? PrimaryGpu =>

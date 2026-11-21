@@ -29,7 +29,7 @@ public sealed class BackupSession
     public string? RestorePoint { get; set; }
     public List<TweakBackup> Tweaks { get; set; } = [];
 
-    [JsonIgnore] public bool HasRevertibleChanges => Tweaks.Any(t => t.Snapshots.Count > 0 && t.Status is TweakStatus.Applied or TweakStatus.PartiallyApplied);
+    [JsonIgnore] public bool HasRevertibleChanges => Tweaks.Any(t => t.Snapshots.Count > 0 && t.Status is TweakStatus.Applied or TweakStatus.PartiallyApplied or TweakStatus.Pending);
 }
 
 public sealed class BackupStore(string? dir = null)
@@ -94,7 +94,8 @@ public sealed class OptimizationService(ExecutorSet executors, BackupStore backu
             ct.ThrowIfCancellationRequested();
             var def = selected[i].Definition;
             progress?.Report(new(i, selected.Count, def.Title));
-            session.Tweaks.Add(ApplyTweak(def, session));
+            ApplyTweak(def, session);
+            backups.Save(session); // status final do ajuste gravado em disco
         }
         progress?.Report(new(selected.Count, selected.Count, "Concluído"));
         log.Info($"=== Fim. {session.Tweaks.Count(t => t.Status == TweakStatus.Applied)} aplicados, " +
@@ -105,6 +106,8 @@ public sealed class OptimizationService(ExecutorSet executors, BackupStore backu
     private TweakBackup ApplyTweak(TweakDefinition def, BackupSession session)
     {
         var tb = new TweakBackup { TweakId = def.Id, Title = def.Title, Reversible = def.Reversible, Status = TweakStatus.Pending };
+        // Entra na sessão ANTES da primeira alteração: cada Save incremental já inclui este ajuste.
+        session.Tweaks.Add(tb);
         var applied = 0;
         var skipped = 0;
         foreach (var action in def.Actions)
@@ -150,7 +153,7 @@ public sealed class OptimizationService(ExecutorSet executors, BackupStore backu
         var count = 0;
         foreach (var t in Enumerable.Reverse(session.Tweaks))
         {
-            if (t.Status is not (TweakStatus.Applied or TweakStatus.PartiallyApplied)) continue;
+            if (t.Status is not (TweakStatus.Applied or TweakStatus.PartiallyApplied or TweakStatus.Pending) || t.Snapshots.Count == 0) continue;
             count += RevertSnapshots(t.Snapshots);
             t.Status = TweakStatus.Reverted;
             log.Info($"[{t.TweakId}] revertido");

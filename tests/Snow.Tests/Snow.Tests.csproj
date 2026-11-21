@@ -7,6 +7,9 @@
     <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Fixtures" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Snow.Platform\Snow.Platform.csproj" />
   </ItemGroup>
 </Project>

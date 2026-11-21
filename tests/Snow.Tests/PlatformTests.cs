@@ -257,6 +257,33 @@ public static class ServiceTests
         Directory.Delete(dir, true);
     }
 
+    [Test] public static void LastTweakIsPersistedAndInterruptedTweakIsReverted()
+    {
+        var reg = new FakeRegistry();
+        var dir = Directory.CreateTempSubdirectory("snowlast").FullName;
+        var svc = new OptimizationService(new ExecutorSet([new RegistryExecutor(reg)]), new BackupStore(dir), new ListLog());
+        var only = new TweakDefinition
+        {
+            Id = "t.only", Title = "t", Description = "d", HonestNote = "nota de teste", Category = TweakCategory.Graficos,
+            Actions = [new RegistryValueAction(RegistryHive.CurrentUser, "K", "v", RegistryKind.DWord, 1)],
+            Profiles = new HashSet<OptimizationProfile> { OptimizationProfile.Equilibrado },
+        };
+        var session = svc.Apply(RecommendationEngine.BuildPlan(Hw.Desktop(), OptimizationProfile.Equilibrado, [only]), new ApplyOptions(false));
+        var fromDisk = new BackupStore(dir).Get(session.Id)!;
+        Assert.Equal(TweakStatus.Applied, Assert.Single(fromDisk.Tweaks, "tweaks no disco").Status, "o último ajuste precisa estar gravado");
+        svc.Restore(fromDisk);
+        Assert.True(reg.Get(RegistryHive.CurrentUser, "K", "v") is null, "restaurado a partir do disco");
+
+        // queda de energia no meio do ajuste: status Pending com snapshot gravado
+        reg.Set(RegistryHive.CurrentUser, "K", "v", new RegValue(RegistryKind.DWord, "1"));
+        var crashed = new BackupSession { Id = "crash", Tweaks = [new TweakBackup { TweakId = "x", Status = TweakStatus.Pending,
+            Snapshots = [new ActionSnapshot("registry", "d", new() { ["hive"] = "CurrentUser", ["path"] = "K", ["name"] = "v", ["old"] = null })] }] };
+        Assert.True(crashed.HasRevertibleChanges);
+        svc.Restore(crashed);
+        Assert.True(reg.Get(RegistryHive.CurrentUser, "K", "v") is null, "ajuste interrompido também é revertido");
+        Directory.Delete(dir, true);
+    }
+
     [Test] public static void SelfTestPassesWithFakes()
     {
         var (svc, _, _, _, dir) = Make();

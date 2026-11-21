@@ -34,7 +34,8 @@ public partial class MainWindow : Window
         Directory.CreateDirectory(dir);
         var pages = new (RadioButton nav, string name)[]
         {
-            (NavDiag, "1-diagnostico"), (NavOpt, "2-otimizar"), (NavStartup, "3-inicializacao"), (NavRestore, "4-restaurar"), (NavLog, "5-log"),
+            (NavDiag, "1-diagnostico"), (NavOpt, "2-otimizar"), (NavGames, "3-jogos"), (NavStartup, "4-inicializacao"),
+            (NavHealth, "5-health"), (NavMonitor, "6-monitor"), (NavRestore, "7-restaurar"), (NavLog, "8-log"),
         };
         foreach (var (nav, name) in pages)
         {

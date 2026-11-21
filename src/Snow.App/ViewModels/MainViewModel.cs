@@ -44,6 +44,7 @@ public sealed class MainViewModel : ObservableObject
         ToggleThemeCommand = new RelayCommand(() => { ThemeManager.Toggle(); OnPropertyChanged(nameof(ThemeLabel)); OnPropertyChanged(nameof(ThemeIcon)); });
         SelectAllRecommendedCommand = new RelayCommand(() => BuildPlan(SelectedProfile?.Profile ?? OptimizationProfile.Desempenho));
 
+        Games = new GamesViewModel(_service, _log, LoadBackups);
         Profiles = new ObservableCollection<ProfileCardViewModel>(ProfileCardViewModel.All());
         LastResult.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasResult));
         IsAdmin = Elevation.IsAdministrator();
@@ -63,6 +64,9 @@ public sealed class MainViewModel : ObservableObject
     public string BusyText { get => _busyText; set => Set(ref _busyText, value); }
     private double _progress;
     public double Progress { get => _progress; set => Set(ref _progress, value); }
+
+    // ───────────── Snow Gaming: jogos ─────────────
+    public GamesViewModel Games { get; }
 
     // ───────────── Diagnóstico ─────────────
     public ObservableCollection<SpecCard> Specs { get; } = [];
@@ -128,6 +132,8 @@ public sealed class MainViewModel : ObservableObject
             SelectedProfile = Profiles.First(p => p.Profile == rec.Profile);
             BuildPlan(rec.Profile);
             _log.Info($"Diagnóstico concluído: {_hw.Cpu.Name} · {_hw.PrimaryGpu?.Name} · {_hw.Os.FriendlyName}");
+            BusyText = "Procurando jogos instalados…";
+            await Games.LoadAsync(_hw);
         }
         catch (Exception e)
         {

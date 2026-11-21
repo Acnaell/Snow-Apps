@@ -20,6 +20,7 @@ $o.gpu = @(Q Win32_VideoController | ForEach-Object {
     [pscustomobject]@{
         Name = "$($_.Name)"; Pnp = "$($_.PNPDeviceID)"; Driver = "$($_.DriverVersion)"
         AdapterRam = [uint64]$_.AdapterRAM; Compat = "$($_.AdapterCompatibility)"
+        Refresh = [int]$_.CurrentRefreshRate
     }
 })
 

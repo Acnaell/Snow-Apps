@@ -65,6 +65,7 @@ public static class Report
         sb.AppendLine($"              Virtualização: {(c.VirtualizationFirmwareEnabled || c.HypervisorPresent ? "ativa" : "desativada na BIOS")}{(c.HypervisorPresent ? " (hypervisor presente)" : "")}");
         foreach (var g in hw.Gpus)
             sb.AppendLine($"GPU         : {g.Name} · {Gb(g.VramBytes)} · driver {g.DriverVersionFriendly}{(g.IsDiscrete ? " · dedicada" : g.IsVirtual ? " · virtual" : " · integrada")}{(g.SupportsHags ? " · HAGS ok" : "")}");
+        if (hw.MonitorRefreshHz > 0) sb.AppendLine($"Monitor     : {hw.MonitorRefreshHz} Hz");
         sb.AppendLine($"RAM         : {Gb(m.TotalBytes)} {(m.Type == "Desconhecido" ? "" : m.Type + " ")}@ {Speed(m)} · {m.Channels}{(m.ChannelsEstimated ? " (estimado)" : "")} channel · {m.Modules.Count} módulo(s) · {m.UsedPercent:0}% em uso");
         foreach (var d in hw.Storage.Disks)
             sb.AppendLine($"Disco {d.Number,-6}: {d.Model} · {d.Kind.Label()} · {Gb(d.SizeBytes)} · {(d.DriveLetters.Count > 0 ? string.Join(", ", d.DriveLetters.Select(l => l + ":")) : "sem letra")}{(d.DriveLetters.Contains(hw.Storage.SystemDrive) ? " (Windows)" : "")}");

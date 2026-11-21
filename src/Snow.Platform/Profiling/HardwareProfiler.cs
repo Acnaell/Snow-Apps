@@ -239,6 +239,7 @@ public static partial class HardwareProfiler
             IsVirtual = isVirtual,
             WddmMajorFromDriver = GpuGenerations.WddmMajor(driver),
             PnpDeviceId = pnp,
+            RefreshRateHz = Int(g, "Refresh"),
         };
     }
 

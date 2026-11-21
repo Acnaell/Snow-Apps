@@ -1,9 +1,11 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Snow.Core.Games;
 using Snow.Core.Recommendation;
 using Snow.Core.Tweaks;
 using Snow.Platform.Executors;
+using Snow.Platform.Games;
 using Snow.Platform.Profiling;
 using Snow.Platform.Services;
 
@@ -23,6 +25,8 @@ public static class Program
           snow-cli backups                              Lista as sessões de backup
           snow-cli startup                              Lista os itens de inicialização
           snow-cli purge-standby                        Esvazia a lista Standby da RAM
+          snow-cli games [--preset alto|medio]          Jogos instalados, pontos de melhora e prévia da predefinição
+          snow-cli game-apply --id <id> --preset alto|medio [--yes]   Aplica a predefinição num jogo (com backup)
           snow-cli selftest --profile <perfil> [--skip ids]   Aplica, verifica e reverte (uso em CI)
 
         Perfis: competitivo | desempenho | equilibrado
@@ -60,6 +64,8 @@ public static class Program
                 "backups" => Backups(),
                 "startup" => Startup(),
                 "purge-standby" => RequireAdmin() ?? PurgeStandby(),
+                "games" => Games(opts),
+                "game-apply" => GameApply(opts),
                 "selftest" => RequireAdmin() ?? SelfTest(opts),
                 "version" or "--version" => Version(),
                 _ => Unknown(args[0]),
@@ -207,6 +213,54 @@ public static class Program
         var result = OptimizationService.CreateDefault(new ConsoleLog()).SelfTest(plan);
         foreach (var l in result.Lines) Console.WriteLine(l);
         return result.Success ? 0 : 5;
+    }
+
+    private static GamePreset ParsePreset(Dictionary<string, string?> o) =>
+        o.TryGetValue("preset", out var p) && p is not null && p.StartsWith("m", StringComparison.OrdinalIgnoreCase) ? GamePreset.FpsMedio : GamePreset.FpsAlto;
+
+    private static int Games(Dictionary<string, string?> o)
+    {
+        var hw = HardwareProfiler.Collect();
+        var svc = GameService.CreateDefault(OptimizationService.CreateDefault(new ConsoleLog()));
+        var preset = ParsePreset(o);
+        var reports = svc.Analyze(hw);
+        Console.WriteLine($"Hardware: nível {HardwareTiers.Classify(hw).Label()}{(hw.MonitorRefreshHz > 0 ? $" · monitor {hw.MonitorRefreshHz} Hz" : "")} · {reports.Count} jogo(s)\n");
+        foreach (var r in reports)
+        {
+            Console.WriteLine($"■ {r.Game.Name}  [{r.Game.Id}]  {r.Game.Store} · {r.Support}{(r.Game.AntiCheat is { } ac ? $" · {ac}" : "")}");
+            Console.WriteLine($"  {r.Game.InstallDir}");
+            foreach (var f in r.Findings.OrderByDescending(f => f.Level))
+                Console.WriteLine($"  [{f.Level}] {f.Title}: {f.Detail}");
+            if (r.Profile is null) { Console.WriteLine(); continue; }
+            var plan = svc.BuildPreset(r, preset);
+            Console.WriteLine($"  → {plan.Summary}");
+            foreach (var c in plan.Changes)
+                Console.WriteLine($"     {c.Label,-28} {c.Current ?? "(padrão)",-14} → {c.Target,-12} {c.Why}");
+            foreach (var s in plan.ManualSteps)
+                Console.WriteLine($"     (no jogo) {s.Where}: {s.Setting} → {s.Value}");
+            Console.WriteLine();
+        }
+        return 0;
+    }
+
+    private static int GameApply(Dictionary<string, string?> o)
+    {
+        if (!o.TryGetValue("id", out var id) || id is null) { Console.Error.WriteLine("Informe --id (veja snow-cli games)."); return 64; }
+        var hw = HardwareProfiler.Collect();
+        var svc = GameService.CreateDefault(OptimizationService.CreateDefault(new ConsoleLog()));
+        var report = svc.Analyze(hw).FirstOrDefault(r => r.Game.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+        if (report is null) { Console.Error.WriteLine($"Jogo {id} não encontrado."); return 3; }
+        var plan = svc.BuildPreset(report, ParsePreset(o));
+        if (plan.Tweaks.Count == 0) { Console.WriteLine("Este jogo é somente diagnóstico: siga o passo a passo de 'snow-cli games'."); return 0; }
+        foreach (var c in plan.Changes) Console.WriteLine($"  {c.Label,-28} {c.Current ?? "(padrão)",-14} → {c.Target}");
+        if (!o.ContainsKey("yes"))
+        {
+            Console.Write("Aplicar? O jogo precisa estar fechado. [s/N] ");
+            if (!(Console.ReadLine() ?? "").Trim().StartsWith("s", StringComparison.OrdinalIgnoreCase)) return 0;
+        }
+        var session = svc.Apply(report, plan);
+        PrintSession(session);
+        return session.Tweaks.Any(t => t.Status == TweakStatus.Failed) ? 4 : 0;
     }
 
     private static int Version()

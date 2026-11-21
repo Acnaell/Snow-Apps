@@ -1,0 +1,48 @@
+auto_patching_enabled_by_player: false
+dependencies:
+    Direct X 9:
+        hash: "9202fe6bc37829c8fd6a61663f0638a9f3fdd0bcfe2197ab6b43403d50b16dbd"
+        phase: "Succeeded"
+        version: "1.0.0"
+    vanguard: true
+locale_data:
+    available_locales:
+    - "ar_AE"
+    - "id_ID"
+    - "cs_CZ"
+    - "de_DE"
+    - "el_GR"
+    - "en_AU"
+    - "en_GB"
+    - "en_PH"
+    - "en_SG"
+    - "en_US"
+    - "es_AR"
+    - "es_ES"
+    - "es_MX"
+    - "fr_FR"
+    - "hu_HU"
+    - "it_IT"
+    - "ja_JP"
+    - "ko_KR"
+    - "pl_PL"
+    - "pt_BR"
+    - "ro_RO"
+    - "ru_RU"
+    - "th_TH"
+    - "tr_TR"
+    - "vi_VN"
+    - "zh_MY"
+    - "zh_TW"
+    default_locale: "pt_BR"
+patching_policy: "manual"
+patchline_patching_ask_policy: "ask"
+product_dependency: "teamfighttactics.live"
+product_install_full_path: "D:/Riot Games/League of Legends"
+product_install_root: "D:/Riot Games"
+settings:
+    create_shortcut: false
+    create_uninstall_key: true
+    locale: "pt_BR"
+shortcut_name: "League of Legends.lnk"
+should_repair: false
