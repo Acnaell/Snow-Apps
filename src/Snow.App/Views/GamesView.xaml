@@ -91,7 +91,7 @@
                                 </TextBlock>
                                 <Border Style="{StaticResource Badge}" Margin="0,8,0,0" HorizontalAlignment="Left" Background="{DynamicResource AccentBgBrush}"
                                         Visibility="{Binding Selected.HasAntiCheat, Converter={StaticResource BoolVis}}">
-                                    <TextBlock FontSize="11" Foreground="{DynamicResource AccentBrush}">
+                                    <TextBlock FontSize="11" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap">
                                         <Run Text="{Binding Selected.AntiCheat, Mode=OneWay}"/><Run Text=" detectado · modo seguro: só arquivo de configuração, jogo fechado"/>
                                     </TextBlock>
                                 </Border>
