@@ -333,8 +333,10 @@ jobs:
           foreach ($rid in 'win-x64','win-x86','win-arm64') {
             Compress-Archive -Path "dist/Snow-$rid/*" -DestinationPath "dist/Snow-$rid.zip" -Force
           }
+          # Download direto pelo site: só o app (x64), sem precisar extrair
+          Copy-Item dist/Snow-win-x64/Snow.exe dist/Snow.exe
           # SHA256SUMS.txt: o atualizador do Snow confere o pacote baixado contra este arquivo
-          Get-ChildItem dist/*.zip | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
+          Get-ChildItem dist/*.zip, dist/Snow.exe | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
             Set-Content -Encoding ascii dist/SHA256SUMS.txt
           Get-Content dist/SHA256SUMS.txt
 
@@ -389,7 +391,7 @@ jobs:
           "0000000000000000000000000000000000000000000000000000000000000000  Snow-win-x64.zip" | Set-Content $sums
           & "$app\snow-cli.exe" update --yes
           if ($LASTEXITCODE -eq 0) { throw "aceitou pacote com SHA-256 errado" }
-          Get-ChildItem dist/*.zip | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
+          Get-ChildItem dist/*.zip, dist/Snow.exe | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
             Set-Content -Encoding ascii dist/SHA256SUMS.txt
           Write-Host "OK: atualiza com pacote verificado e recusa SHA-256 errado"
           $global:LASTEXITCODE = 0   # o código 1 acima era a recusa esperada
@@ -407,6 +409,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           files: |
             dist/*.zip
+            dist/Snow.exe
             dist/SHA256SUMS.txt
           generate_release_notes: true
           body: |

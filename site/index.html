@@ -234,8 +234,8 @@
       <h2 class="sec">Instalar leva um minuto</h2>
       <p class="sec-lede">Não precisa instalar o .NET nem criar conta. Depois disso, o Snow se atualiza sozinho.</p>
       <ol class="steps">
-        <li><b>Baixe o zip</b><p>Na página de versões, escolha <strong>Snow-win-x64.zip</strong> (a maioria dos PCs). Para 32 bits ou ARM, há versões próprias.</p></li>
-        <li><b>Extraia e abra o Snow.exe</b><p>O Windows pede permissão de administrador, porque o Snow ajusta configurações do sistema.</p></li>
+        <li><b>Baixe o Snow.exe</b><p>O botão do topo baixa o programa pronto para a maioria dos PCs (64 bits). Não tem instalador: é só o app.</p></li>
+        <li><b>Abra o Snow.exe</b><p>Guarde numa pasta sua, como Documentos\Snow, e abra. O Windows pede permissão de administrador, porque o Snow ajusta configurações do sistema.</p></li>
         <li><b>Clique em Analisar</b><p>O diagnóstico sai em segundos. Antes de aplicar qualquer perfil, você vê a lista do que vai mudar.</p></li>
       </ol>
     </section>
@@ -279,11 +279,15 @@
   fetch("https://api.github.com/repos/Acnaell/Snow-Apps/releases/latest")
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(rel => {
-      const zip = (rel.assets || []).find(a => a.name === "Snow-win-x64.zip");
-      if (zip) document.getElementById("download").href = zip.browser_download_url;
-      document.getElementById("download").textContent = "Baixar Snow " + rel.tag_name;
+      const find = n => (rel.assets || []).find(a => a.name === n);
+      const exe = find("Snow.exe"), zip = find("Snow-win-x64.zip"), best = exe || zip;
+      if (best) document.getElementById("download").href = best.browser_download_url;
+      const mb = best ? " (" + Math.round(best.size / 1048576) + " MB)" : "";
+      document.getElementById("download").textContent = "Baixar Snow " + rel.tag_name + mb;
       document.getElementById("version").innerHTML =
-        'Windows 10 e 11, 64 bits. Outras versões (32 bits, ARM) na <a href="' + rel.html_url + '">página da versão</a>.';
+        'Windows 10 e 11, 64 bits. Baixa direto o programa, sem instalar.' +
+        (zip && exe ? ' Prefere o pacote completo (com linha de comando)? <a href="' + zip.browser_download_url + '">Snow-win-x64.zip</a>.' : '') +
+        ' 32 bits e ARM: <a href="' + rel.html_url + '">página da versão</a>.';
     })
     .catch(() => {});
 </script>
