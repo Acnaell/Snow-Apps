@@ -158,12 +158,26 @@ jobs:
             Compress-Archive -Path "$out/*" -DestinationPath "dist/Snow-$rid.zip" -Force
           }
           Get-ChildItem dist -Recurse -Include *.exe,*.zip | Select-Object FullName, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
-      - name: Smoke test do executável publicado
+      - name: Smoke test dos executáveis publicados (CLI e interface, como o usuário recebe)
         shell: pwsh
         run: |
           & dist/Snow-win-x64/snow.exe version
           & dist/Snow-win-x64/snow.exe diagnose
-          if ($LASTEXITCODE -ne 0) { throw "exe publicado falhou" }
+          if ($LASTEXITCODE -ne 0) { throw "snow.exe publicado falhou" }
+          # Simula o download: o zip extraído carrega a marca "baixado da internet" (Zone.Identifier)
+          Expand-Archive dist/Snow-win-x64.zip -DestinationPath extracted -Force
+          Get-ChildItem extracted -File | ForEach-Object { Set-Content -Path $_.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3" }
+          $start = Get-Date
+          $p = Start-Process extracted/Snow.exe -ArgumentList "--screenshot", "$pwd\pubscreens" -PassThru
+          $ok = $p.WaitForExit(120000)
+          Write-Host "Saiu: $ok · código: $($p.ExitCode)"
+          Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=$start} -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProviderName -in '.NET Runtime','Application Error','Windows Error Reporting' } |
+            ForEach-Object { Write-Host "---- $($_.ProviderName) $($_.Id)"; Write-Host $_.Message }
+          Get-ChildItem "$env:TEMP\snow-startup-error.txt","$env:ProgramData\Snow\logs\*.log" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "---- $_"; Get-Content $_ -Tail 40 }
+          if (-not $ok) { $p.Kill(); throw "Snow.exe publicado travou" }
+          if ($p.ExitCode -ne 0) { throw "Snow.exe publicado saiu com código $($p.ExitCode)" }
+          if ((Get-ChildItem pubscreens -Filter *.png).Count -lt 5) { throw "Snow.exe publicado não renderizou as telas" }
       - uses: actions/upload-artifact@v4
         with:
           name: Snow-executaveis
