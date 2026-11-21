@@ -7,7 +7,6 @@
     <RootNamespace>Snow.App</RootNamespace>
     <ApplicationIcon>..\..\assets\snow.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
   <ItemGroup>
