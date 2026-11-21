@@ -124,7 +124,9 @@ public static partial class HardwareIndex
         if (Xeon().Match(name) is { Success: true } x)
         {
             ipc = x.Groups[2].Value switch { "2" => 0.93, "3" => 1.0, "4" => 1.03, "5" or "6" => 1.1, _ => 0.88 };
-            if (XeonTurbo.TryGetValue($"{x.Groups[1].Value} v{x.Groups[2].Value}", out var t)) turbo = t;
+            // Turbo máximo vale para 1–2 núcleos; com o jogo ocupando vários, Xeons de servidor ficam bem abaixo
+            // (E5-2620 v3: 3,2 GHz em um núcleo, 2,6 GHz em todos). Usa o meio do caminho, menos otimista que o turbo cheio.
+            if (XeonTurbo.TryGetValue($"{x.Groups[1].Value} v{x.Groups[2].Value}", out var t)) turbo = t - 0.3;
         }
         else if (IntelUltra().Match(name) is { Success: true }) ipc = 1.6;
         else if (IntelCore().Match(name) is { Success: true } c)

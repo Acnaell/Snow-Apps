@@ -154,7 +154,7 @@ public static class CanRun
             : reachedIdx == 1 ? CanRunLevel.Recomendado
             : CanRunLevel.Alto;
         // só o mínimo publicado (CS2): com folga grande, avisa que deve rodar bem acima disso
-        if (game.Tiers.Count == 1 && level == CanRunLevel.Minimo && headroom >= 1.5) level = CanRunLevel.Recomendado;
+        if (game.Tiers.Count == 1 && level == CanRunLevel.Minimo && headroom >= 1.4) level = CanRunLevel.Recomendado;
 
         var verdict = level switch
         {

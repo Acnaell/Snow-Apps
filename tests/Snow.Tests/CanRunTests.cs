@@ -29,7 +29,7 @@ public static class CanRunTests
 
     [Test] public static void IndexesMakeSense()
     {
-        Assert.Equal(82, HardwareIndex.Cpu(Thiago.Cpu));
+        Assert.Equal(74, HardwareIndex.Cpu(Thiago.Cpu));
         Assert.Equal(88, HardwareIndex.Gpu("AMD Radeon RX 580 2048SP"));
         Assert.Equal(100, HardwareIndex.Gpu("Radeon RX 580 Series"));
         Assert.Equal(93, HardwareIndex.Gpu("NVIDIA GeForce GTX 1060 3GB"));
@@ -51,7 +51,9 @@ public static class CanRunTests
         Assert.Equal(CanRunLevel.Recomendado, r["valorant"].Level, "144 FPS pede i5-9400F/R5 2600X");
         Assert.Equal(CanRunLevel.Abaixo, r["marvelrivals"].Level, r["marvelrivals"].Detail);
         Assert.True(r["marvelrivals"].Missing.Single().StartsWith("processador"), "só o processador fica abaixo");
-        Assert.Equal(CanRunLevel.Minimo, r["cyberpunk"].Level, r["cyberpunk"].Detail);
+        // E5-2620 v3 a ~2,9 GHz efetivos fica abaixo de um Ryzen 5 1600 (mínimo do Cyberpunk 2.0)
+        Assert.Equal(CanRunLevel.Abaixo, r["cyberpunk"].Level, r["cyberpunk"].Detail);
+        Assert.True(r["cyberpunk"].Missing.Single().StartsWith("processador"));
         Assert.Equal(CanRunLevel.Recomendado, r["cs2"].Level, "passa o mínimo com folga");
     }
 

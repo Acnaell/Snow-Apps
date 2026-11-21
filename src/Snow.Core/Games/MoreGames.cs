@@ -181,10 +181,18 @@ public static class MeasuredInsight
     {
         var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (lines.Length < 2) return [];
-        var i = Array.FindIndex(lines[0].Split(','), h => h.Equals("FPS", StringComparison.OrdinalIgnoreCase));
+        var head = lines[0].Split(',');
+        var i = Array.FindIndex(head, h => h.Equals("FPS", StringComparison.OrdinalIgnoreCase));
+        var g = Array.FindIndex(head, h => h.Equals("GPU", StringComparison.OrdinalIgnoreCase));
         if (i < 0) return [];
-        return lines.Skip(1).Select(l => l.Split(',')).Where(c => c.Length > i && double.TryParse(c[i], NumberStyles.Float, CultureInfo.InvariantCulture, out _))
-                    .Select(c => double.Parse(c[i], CultureInfo.InvariantCulture)).ToList();
+        static double? D(string[] c, int k) => k >= 0 && k < c.Length && double.TryParse(c[k], NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+        var all = lines.Skip(1).Select(l => l.Split(','))
+            // GPU quase parada = tela de carregamento, lobby ou outro programa medido por engano: não é partida
+            .Where(c => D(c, i) is > 0 and < 1000 && (g < 0 || D(c, g) is null or >= 10))
+            .Select(c => D(c, i)!.Value).ToList();
+        if (all.Count < 10) return all;
+        var median = all.OrderBy(x => x).ElementAt(all.Count / 2);
+        return all.Where(x => x >= median * 0.3).ToList();
     }
 
     /// <summary>Jogo instalado num disco com erros SMART ou alerta.</summary>
