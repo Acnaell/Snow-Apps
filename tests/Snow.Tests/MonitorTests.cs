@@ -31,6 +31,7 @@ public static class MonitorTests
         Assert.Equal(Bottleneck.LimiteFps, BottleneckClassifier.Classify(S(55, 50)));
         Assert.Equal(Bottleneck.Memoria, BottleneckClassifier.Classify(S(99, 99, ram: 95)));
         Assert.Equal(Bottleneck.Desconhecido, BottleneckClassifier.Classify(S(null, 50)), "sem contador de GPU (VM)");
+        Assert.Equal(Bottleneck.SemCarga, BottleneckClassifier.Classify(S(10, 12, fps: null)), "PC parado não é 'equilibrado'");
 
         var session = SessionSummary.From([S(99, 60), S(98, 70), S(60, 95), S(97, 50)]);
         Assert.Equal(Bottleneck.Gpu, session.Main);

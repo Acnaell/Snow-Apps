@@ -24,7 +24,7 @@ public sealed record FrameStats(int Frames, double AvgFps, double Low1, double L
     }
 }
 
-public enum Bottleneck { Gpu, Cpu, LimiteFps, Memoria, Equilibrado, Desconhecido }
+public enum Bottleneck { Gpu, Cpu, LimiteFps, Memoria, Equilibrado, SemCarga, Desconhecido }
 
 /// <summary>Uma amostra por segundo do Monitor.</summary>
 public sealed record UsageSample(
@@ -52,6 +52,7 @@ public static class BottleneckClassifier
         if (s.GpuPercent is >= 95) return Bottleneck.Gpu;
         if (s.BusiestCorePercent is >= 90 && s.GpuPercent is < 85) return Bottleneck.Cpu;
         if (s.GpuPercent is null || s.BusiestCorePercent is null) return Bottleneck.Desconhecido;
+        if (s.Fps is null && s.GpuPercent < 40 && s.BusiestCorePercent < 50) return Bottleneck.SemCarga;
         if (s.Fps is > 0 && s.GpuPercent < 85 && s.BusiestCorePercent < 85) return Bottleneck.LimiteFps;
         return Bottleneck.Equilibrado;
     }
@@ -63,6 +64,7 @@ public static class BottleneckClassifier
         Bottleneck.LimiteFps => "No teto de FPS / VSync",
         Bottleneck.Memoria => "Limitado pela memória RAM",
         Bottleneck.Equilibrado => "Equilibrado",
+        Bottleneck.SemCarga => "Sem carga (nenhum jogo pesando)",
         _ => "Sem dados suficientes",
     };
 
@@ -73,6 +75,7 @@ public static class BottleneckClassifier
         Bottleneck.LimiteFps => "O jogo está no limite de FPS que você definiu (ou VSync). Há folga de hardware.",
         Bottleneck.Memoria => "A RAM está quase cheia: feche navegadores e launchers antes de jogar.",
         Bottleneck.Equilibrado => "CPU e GPU com uso parecido, sem um limite claro.",
+        Bottleneck.SemCarga => "O PC está folgado. Abra um jogo para ver onde está o limite.",
         _ => "Abra um jogo para analisar.",
     };
 }
