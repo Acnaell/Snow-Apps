@@ -65,12 +65,12 @@ Se aparecer *"Este aplicativo não pode ser executado em seu PC"*, o zip é de o
 
 ## Linha de comando
 ```
-snow diagnose [--json]
-snow plan     --profile competitivo|desempenho|equilibrado
-snow apply    --profile <perfil> [--yes] [--only ids] [--skip ids] [--no-restore-point]
-snow restore  [--latest | --id <id> | --all]
-snow backups | snow startup | snow purge-standby
-snow selftest --profile <perfil>     # aplica → verifica → restaura → confere estado idêntico
+snow-cli diagnose [--json]
+snow-cli plan     --profile competitivo|desempenho|equilibrado
+snow-cli apply    --profile <perfil> [--yes] [--only ids] [--skip ids] [--no-restore-point]
+snow-cli restore  [--latest | --id <id> | --all]
+snow-cli backups | snow-cli startup | snow-cli purge-standby
+snow-cli selftest --profile <perfil>     # aplica → verifica → restaura → confere estado idêntico
 ```
 
 ## Compatibilidade e testes
@@ -110,7 +110,7 @@ src/Snow.Core       domínio puro (net8.0): modelos de hardware, catálogo de aj
 src/Snow.Platform   Windows: coleta CIM (1 script PowerShell), P/Invoke (powrprof, kernel32, ntdll),
                     executores com captura/aplicação/verificação/reversão, backup, ponto de restauração
 src/Snow.App        WPF (MVVM, temas escuro e claro)
-src/Snow.Cli        snow.exe para scripts e CI
+src/Snow.Cli        snow-cli.exe para scripts e CI
 tests/Snow.Tests    runner próprio com fakes
 ```
 

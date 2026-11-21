@@ -63,7 +63,7 @@ jobs:
       - name: Diagnóstico real (texto + JSON)
         shell: pwsh
         run: |
-          $cli = "src/Snow.Cli/bin/Release/net8.0/snow.exe"
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow-cli.exe"
           & $cli diagnose
           if ($LASTEXITCODE -ne 0) { throw "diagnose falhou" }
           & $cli diagnose --json | Out-File -Encoding utf8 diagnose-${{ matrix.os }}.json
@@ -72,13 +72,13 @@ jobs:
       - name: Plano de cada perfil
         shell: pwsh
         run: |
-          $cli = "src/Snow.Cli/bin/Release/net8.0/snow.exe"
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow-cli.exe"
           foreach ($p in 'competitivo','desempenho','equilibrado') { & $cli plan --profile $p; if ($LASTEXITCODE) { throw $p } }
 
       - name: Autoteste aplicar → verificar → restaurar (estado idêntico)
         shell: pwsh
         run: |
-          $cli = "src/Snow.Cli/bin/Release/net8.0/snow.exe"
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow-cli.exe"
           foreach ($p in 'competitivo','desempenho','equilibrado') {
             Write-Host "::group::selftest $p"
             & $cli selftest --profile $p
@@ -90,7 +90,7 @@ jobs:
       - name: Aplicar de verdade + restaurar pelo comando restore
         shell: pwsh
         run: |
-          $cli = "src/Snow.Cli/bin/Release/net8.0/snow.exe"
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow-cli.exe"
           & $cli apply --profile competitivo --yes --no-restore-point
           if ($LASTEXITCODE -ne 0) { throw "apply falhou" }
           & $cli backups
@@ -161,6 +161,10 @@ jobs:
           # Confere a arquitetura gravada no cabeçalho PE de cada exe (0x8664 x64, 0x14c x86, 0xAA64 ARM64)
           $expected = @{ 'win-x64' = 0x8664; 'win-x86' = 0x14c; 'win-arm64' = 0xAA64 }
           foreach ($rid in $expected.Keys) {
+            $names = (Get-ChildItem "dist/Snow-$rid/*.exe").Name
+            if (-not ($names -ccontains 'Snow.exe' -and $names -ccontains 'snow-cli.exe')) { throw "$rid deveria ter Snow.exe e snow-cli.exe, tem: $names" }
+          }
+          foreach ($rid in $expected.Keys) {
             foreach ($exe in Get-ChildItem "dist/Snow-$rid/*.exe") {
               $b = [IO.File]::ReadAllBytes($exe.FullName)
               $pe = [BitConverter]::ToInt32($b, 0x3C)
@@ -172,8 +176,8 @@ jobs:
       - name: Smoke test dos executáveis publicados (CLI e interface, como o usuário recebe)
         shell: pwsh
         run: |
-          & dist/Snow-win-x64/snow.exe version
-          & dist/Snow-win-x64/snow.exe diagnose
+          & dist/Snow-win-x64/snow-cli.exe version
+          & dist/Snow-win-x64/snow-cli.exe diagnose
           if ($LASTEXITCODE -ne 0) { throw "snow.exe publicado falhou" }
           # Testa o conteúdo exato do zip entregue ao usuário
           Expand-Archive dist/Snow-win-x64.zip -DestinationPath extracted -Force
@@ -194,7 +198,7 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "Snow.exe publicado saiu com código $($p.ExitCode)" }
           if ((Get-ChildItem pubscreens -Filter *.png).Count -lt 5) { throw "Snow.exe publicado não renderizou as telas" }
           # x86 (32 bits) roda no runner x64 via WOW64: valida o pacote de 32 bits também
-          & dist/Snow-win-x86/snow.exe diagnose
+          & dist/Snow-win-x86/snow-cli.exe diagnose
           if ($LASTEXITCODE -ne 0) { throw "snow.exe x86 falhou" }
           $p = Launch dist/Snow-win-x86/Snow.exe "$pwd\pubscreens86"
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "Snow.exe x86 travou" }
@@ -215,6 +219,6 @@ jobs:
           body: |
             ## Snow Game Optimizer
             Baixe o `.zip` da arquitetura do seu Windows (veja em **Configurações → Sistema → Sobre → Tipo de sistema**): **x64** para "sistema operacional de 64 bits, processador baseado em x64", **x86** para "sistema operacional de 32 bits", **ARM64** para Snapdragon/ARM, extraia e execute **Snow.exe** (o Windows pedirá permissão de Administrador).
-            Os executáveis são autocontidos: não precisa instalar o .NET. `snow.exe` é a versão de linha de comando.
+            Os executáveis são autocontidos: não precisa instalar o .NET. `snow-cli.exe` é a versão de linha de comando.
 
             Testado no CI em Windows build 20348 (família Windows 10) e 26100 (Windows 11 24H2).

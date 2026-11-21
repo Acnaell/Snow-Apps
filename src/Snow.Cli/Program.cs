@@ -14,16 +14,16 @@ namespace Snow.Cli;
 public static class Program
 {
     private const string Help = """
-        Snow Game Optimizer — linha de comando
+        Snow Game Optimizer — linha de comando (a interface gráfica é o Snow.exe)
 
-          snow diagnose [--json]                    Diagnóstico de hardware e estado do Windows
-          snow plan    --profile <perfil>           Mostra o que cada perfil alteraria (nada é aplicado)
-          snow apply   --profile <perfil> [--yes] [--only id1,id2] [--skip id1,id2] [--no-restore-point]
-          snow restore [--latest | --id <id> | --all]
-          snow backups                              Lista as sessões de backup
-          snow startup                              Lista os itens de inicialização
-          snow purge-standby                        Esvazia a lista Standby da RAM
-          snow selftest --profile <perfil> [--skip ids]   Aplica, verifica e reverte (uso em CI)
+          snow-cli diagnose [--json]                    Diagnóstico de hardware e estado do Windows
+          snow-cli plan    --profile <perfil>           Mostra o que cada perfil alteraria (nada é aplicado)
+          snow-cli apply   --profile <perfil> [--yes] [--only id1,id2] [--skip id1,id2] [--no-restore-point]
+          snow-cli restore [--latest | --id <id> | --all]
+          snow-cli backups                              Lista as sessões de backup
+          snow-cli startup                              Lista os itens de inicialização
+          snow-cli purge-standby                        Esvazia a lista Standby da RAM
+          snow-cli selftest --profile <perfil> [--skip ids]   Aplica, verifica e reverte (uso em CI)
 
         Perfis: competitivo | desempenho | equilibrado
         Requer Administrador para apply/restore/selftest/purge-standby.
@@ -37,7 +37,16 @@ public static class Program
             Console.Error.WriteLine("O Snow só funciona no Windows 10/11.");
             return 3;
         }
-        if (args.Length == 0 || args[0] is "-h" or "--help" or "help") { Console.WriteLine(Help); return 0; }
+        if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
+        {
+            Console.WriteLine(Help);
+            if (args.Length == 0 && !Console.IsInputRedirected && !Console.IsOutputRedirected)
+            {
+                Console.Write("\nAberto com duplo clique? Use o Snow.exe para a interface gráfica. Pressione Enter para fechar.");
+                Console.ReadLine();
+            }
+            return 0;
+        }
 
         var opts = ParseOptions(args.Skip(1).ToArray());
         try
