@@ -25,6 +25,7 @@ public static class Program
           snow-cli backups                              Lista as sessões de backup
           snow-cli startup                              Lista os itens de inicialização
           snow-cli purge-standby                        Esvazia a lista Standby da RAM
+          snow-cli health                               Snow Health: nota de saúde, discos, estabilidade, drivers
           snow-cli games [--preset alto|medio]          Jogos instalados, pontos de melhora e prévia da predefinição
           snow-cli game-apply --id <id> --preset alto|medio [--yes]   Aplica a predefinição num jogo (com backup)
           snow-cli selftest --profile <perfil> [--skip ids]   Aplica, verifica e reverte (uso em CI)
@@ -65,6 +66,7 @@ public static class Program
                 "startup" => Startup(),
                 "purge-standby" => RequireAdmin() ?? PurgeStandby(),
                 "games" => Games(opts),
+                "health" => Health(),
                 "game-apply" => GameApply(opts),
                 "selftest" => RequireAdmin() ?? SelfTest(opts),
                 "version" or "--version" => Version(),
@@ -261,6 +263,23 @@ public static class Program
         var session = svc.Apply(report, plan);
         PrintSession(session);
         return session.Tweaks.Any(t => t.Status == TweakStatus.Failed) ? 4 : 0;
+    }
+
+    private static int Health()
+    {
+        var r = Snow.Platform.Health.HealthCollector.Run();
+        Console.WriteLine($"══════════ SNOW HEALTH: {r.Score}/100 ({r.Verdict}) ══════════");
+        foreach (var g in r.Items.GroupBy(i => i.Category))
+        {
+            Console.WriteLine($"\n── {g.Key} ──");
+            foreach (var i in g)
+            {
+                Console.WriteLine($"[{i.Level}] {i.Title}: {i.Detail}");
+                if (i.Action is not null) Console.WriteLine($"         → {i.Action}");
+            }
+        }
+        foreach (var w in r.Data.Warnings) Console.WriteLine($"(aviso de coleta) {w}");
+        return 0;
     }
 
     private static int Version()

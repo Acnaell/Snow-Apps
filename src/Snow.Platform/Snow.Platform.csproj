@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Snow.Core\Snow.Core.csproj" />
     <EmbeddedResource Include="Profiling\Collect.ps1" LogicalName="Snow.Collect.ps1" />
+    <EmbeddedResource Include="Health\Health.ps1" LogicalName="Snow.Health.ps1" />
     <InternalsVisibleTo Include="Snow.Tests" />
   </ItemGroup>
 </Project>

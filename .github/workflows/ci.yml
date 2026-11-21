@@ -77,6 +77,15 @@ jobs:
           & $cli diagnose --json | Out-File -Encoding utf8 diagnose-${{ matrix.os }}.json
           Get-Content diagnose-${{ matrix.os }}.json -Raw | ConvertFrom-Json | Out-Null   # JSON válido?
 
+      - name: Snow Health real (discos, eventos, dispositivos)
+        shell: pwsh
+        run: |
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow-cli.exe"
+          $out = & $cli health | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch 'SNOW HEALTH: \d+/100') { throw "health falhou" }
+          if ($out -match 'Coleta falhou') { throw "coleta do Health falhou" }
+
       - name: Instalar jogos simulados (Riot/Epic) com os arquivos de exemplo
         shell: pwsh
         run: |

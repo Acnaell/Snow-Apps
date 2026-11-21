@@ -45,6 +45,7 @@ public sealed class MainViewModel : ObservableObject
         SelectAllRecommendedCommand = new RelayCommand(() => BuildPlan(SelectedProfile?.Profile ?? OptimizationProfile.Desempenho));
 
         Games = new GamesViewModel(_service, _log, LoadBackups);
+        Health = new HealthViewModel(_log);
         Profiles = new ObservableCollection<ProfileCardViewModel>(ProfileCardViewModel.All());
         LastResult.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasResult));
         IsAdmin = Elevation.IsAdministrator();
@@ -67,6 +68,7 @@ public sealed class MainViewModel : ObservableObject
 
     // ───────────── Snow Gaming: jogos ─────────────
     public GamesViewModel Games { get; }
+    public HealthViewModel Health { get; }
 
     // ───────────── Diagnóstico ─────────────
     public ObservableCollection<SpecCard> Specs { get; } = [];
@@ -134,6 +136,8 @@ public sealed class MainViewModel : ObservableObject
             _log.Info($"Diagnóstico concluído: {_hw.Cpu.Name} · {_hw.PrimaryGpu?.Name} · {_hw.Os.FriendlyName}");
             BusyText = "Procurando jogos instalados…";
             await Games.LoadAsync(_hw);
+            BusyText = "Snow Health: lendo discos e registros de eventos…";
+            await Health.LoadAsync();
         }
         catch (Exception e)
         {

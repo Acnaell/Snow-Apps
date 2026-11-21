@@ -59,7 +59,7 @@
 
                     <TextBlock Text="SNOW HEALTH" Style="{StaticResource NavHeader}" Margin="12,18,0,6"/>
                     <RadioButton x:Name="NavHealth" Style="{StaticResource NavButton}" GroupName="nav">
-                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE95E;"/><TextBlock Text="Saúde do PC" Margin="12,0,0,0"/><TextBlock Text="em breve" Style="{StaticResource Caption}" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center"/></StackPanel>
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE95E;"/><TextBlock Text="Saúde do PC" Margin="12,0,0,0"/></StackPanel>
                     </RadioButton>
 
                     <TextBlock Text="SNOW MONITOR" Style="{StaticResource NavHeader}" Margin="12,18,0,6"/>
@@ -85,10 +85,7 @@
             <views:OptimizeView Visibility="{Binding IsChecked, ElementName=NavOpt, Converter={StaticResource BoolVis}}"/>
             <views:GamesView Visibility="{Binding IsChecked, ElementName=NavGames, Converter={StaticResource BoolVis}}"/>
             <views:StartupView Visibility="{Binding IsChecked, ElementName=NavStartup, Converter={StaticResource BoolVis}}"/>
-            <views:ComingSoonView Visibility="{Binding IsChecked, ElementName=NavHealth, Converter={StaticResource BoolVis}}"
-                                  Title="Snow Health" Items="{x:Static views:ComingSoonView.HealthItems}"
-                                  Subtitle="Avaliar a vida e a saúde do seu PC: discos, bateria, estabilidade do Windows e drivers."
-                                  Footer="Somente leitura e sem drivers: o Health apenas consulta o que o Windows já registra (SMART, relatório de bateria, Monitor de Confiabilidade)."/>
+            <views:HealthView Visibility="{Binding IsChecked, ElementName=NavHealth, Converter={StaticResource BoolVis}}"/>
             <views:ComingSoonView Visibility="{Binding IsChecked, ElementName=NavMonitor, Converter={StaticResource BoolVis}}"
                                   Title="Snow Monitor" Items="{x:Static views:ComingSoonView.MonitorItems}"
                                   Subtitle="Análise de desempenho: uso do hardware, FPS e frametime enquanto você joga."
