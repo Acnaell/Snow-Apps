@@ -88,8 +88,8 @@ public static class CpuWork
         return acc;
     }
 
-    /// <summary>Pontos por thread: blocos por segundo × 10 (escala só para ficar legível; compare rodadas e PCs no Snow).</summary>
-    public static int Score(long blocks, TimeSpan elapsed) => (int)Math.Round(blocks / elapsed.TotalSeconds * 10);
+    /// <summary>Pontos: blocos por segundo ÷ 10 (escala só para ficar legível; compare rodadas e PCs no Snow).</summary>
+    public static int Score(long blocks, TimeSpan elapsed) => (int)Math.Round(blocks / elapsed.TotalSeconds / 10);
 
     public static (int score, long blocks) RunSingle(TimeSpan duration, CancellationToken ct = default)
     {
