@@ -213,12 +213,11 @@ public static partial class HardwareProfiler
         // AdapterRAM é uint32 (limite de 4 GB): o valor real está no registro da classe de vídeo.
         try
         {
-            var pnpLower = pnp.ToLowerInvariant();
             foreach (var sub in reg.SubKeys(RegistryHive.LocalMachine, GpuClassKey).Where(s => s.All(char.IsDigit)))
             {
                 var path = $@"{GpuClassKey}\{sub}";
-                var match = reg.Get(RegistryHive.LocalMachine, path, "MatchingDeviceId")?.Data?.ToLowerInvariant();
-                if (string.IsNullOrEmpty(match) || !pnpLower.StartsWith(match.Replace("\\\\", "\\"))) continue;
+                var match = reg.Get(RegistryHive.LocalMachine, path, "MatchingDeviceId")?.Data;
+                if (string.IsNullOrEmpty(match) || !PnpMatches(pnp, match)) continue;
                 var q = ReadSize(reg.Get(RegistryHive.LocalMachine, path, "HardwareInformation.qwMemorySize"))
                      ?? ReadSize(reg.Get(RegistryHive.LocalMachine, path, "HardwareInformation.MemorySize"));
                 if (q is > 0) vram = q.Value;
@@ -257,6 +256,19 @@ public static partial class HardwareProfiler
             PnpDeviceId = pnp,
             RefreshRateHz = Int(g, "Refresh"),
         };
+    }
+
+    /// <summary>
+    /// O MatchingDeviceId do driver pode pular partes do ID do dispositivo
+    /// (ex.: "PCI\VEN_1002&amp;DEV_6FDF&amp;REV_EF" vs "PCI\VEN_1002&amp;DEV_6FDF&amp;SUBSYS_0B311002&amp;REV_EF\4&amp;…"):
+    /// todas as partes do MatchingDeviceId precisam existir no ID do dispositivo.
+    /// </summary>
+    internal static bool PnpMatches(string pnpDeviceId, string matchingDeviceId)
+    {
+        static HashSet<string> Tokens(string s) => s.ToLowerInvariant().Split(new[] { '\\', '&' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+        var device = Tokens(pnpDeviceId);
+        var match = Tokens(matchingDeviceId);
+        return match.Count > 0 && match.IsSubsetOf(device);
     }
 
     private static long? ReadSize(RegValue? v) => v?.Kind switch

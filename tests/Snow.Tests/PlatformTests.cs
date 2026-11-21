@@ -371,6 +371,22 @@ public static class ProfilerTests
         Assert.True(Insights.Analyze(hw).Any(i => i.Detail.Contains("não funciona junto com memória comum")), "aviso de não misturar RDIMM com UDIMM");
     }
 
+    [Test] public static void RegistryVramMatchesDespiteSubsysInDeviceId()
+    {
+        // Dados reais: MatchingDeviceId sem SUBSYS; PNPDeviceID com SUBSYS no meio. AdapterRAM = 4 GB; qwMemorySize = 8 GB.
+        Assert.True(HardwareProfiler.PnpMatches(@"PCI\VEN_1002&DEV_6FDF&SUBSYS_0B311002&REV_EF\4&2B8E0B4B&0&0019", @"PCI\VEN_1002&DEV_6FDF&REV_EF"));
+        Assert.True(HardwareProfiler.PnpMatches(@"PCI\VEN_10DE&DEV_2504&SUBSYS_397D1462&REV_A1\4&1", @"pci\ven_10de&dev_2504"));
+        Assert.False(HardwareProfiler.PnpMatches(@"PCI\VEN_1002&DEV_6FDF&SUBSYS_0B311002&REV_EF\4&1", @"PCI\VEN_1002&DEV_67DF&REV_EF"), "outro modelo");
+        var reg = new FakeRegistry();
+        const string cls = @"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0000";
+        reg.Set(RegistryHive.LocalMachine, cls, "MatchingDeviceId", new RegValue(RegistryKind.String, @"PCI\VEN_1002&DEV_6FDF&REV_EF"));
+        reg.Set(RegistryHive.LocalMachine, cls, "HardwareInformation.qwMemorySize", new RegValue(RegistryKind.QWord, "8589934592"));
+        reg.Set(RegistryHive.LocalMachine, cls, "HardwareInformation.MemorySize", new RegValue(RegistryKind.DWord, "4293918720"));
+        const string json = """{"gpu":[{"Name":"AMD Radeon RX 580 2048SP","Pnp":"PCI\\VEN_1002&DEV_6FDF&SUBSYS_0B311002&REV_EF\\4&2B8E0B4B&0&0019","Driver":"31.0.21925.1001","AdapterRam":4293918720}]}""";
+        var hw = HardwareProfiler.Build(json, Native, reg, new FakeServices(), []);
+        Assert.Equal(8L << 30, hw.Gpus[0].VramBytes, "8 GB pelo registro, sem DXGI");
+    }
+
     [Test] public static void XeonQuadChannelInsightsAreRight()
     {
         var hw = Hw.Desktop(h => h with

@@ -65,7 +65,8 @@ public static class HealthAnalyzer
             if (uncorrected > 0)
             {
                 items.Add(new(HealthCategory.Discos, HealthLevel.Critico, $"{name}: {uncorrected} erro(s) não corrigido(s)",
-                    "O disco não conseguiu ler ou gravar dados em algum momento.", "Faça backup e rode o CHKDSK; se os erros crescerem, troque o disco."));
+                    "O disco não conseguiu ler ou gravar dados em algumas ocasiões. Arquivos nesses pontos podem estar corrompidos.",
+                    "Faça backup do que for importante agora. Rode 'chkdsk /scan' e acompanhe: se o número subir, troque o disco."));
                 problems++;
             }
 
@@ -140,7 +141,8 @@ public static class HealthAnalyzer
 
     private static void Devices(HealthData d, List<HealthItem> items)
     {
-        var broken = d.ProblemDevices.Where(p => p.ErrorCode != 22).ToList(); // 22 = desativado pelo usuário
+        // 22 = desativado pelo usuário; 24 = não presente (ex.: PS/2 fantasma da BIOS); 45 = desconectado. Não são defeitos.
+        var broken = d.ProblemDevices.Where(p => p.ErrorCode is not (22 or 24 or 45)).ToList();
         foreach (var p in broken.Take(5))
             items.Add(new(HealthCategory.Dispositivos, p.ErrorCode == 28 ? HealthLevel.Atencao : HealthLevel.Atencao,
                 $"{(string.IsNullOrWhiteSpace(p.Name) ? "Dispositivo desconhecido" : p.Name.Trim())}: {DeviceError(p.ErrorCode)}", $"Código de erro {p.ErrorCode} no Gerenciador de Dispositivos.",

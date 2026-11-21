@@ -4,11 +4,18 @@ $o = [ordered]@{}
 $warn = New-Object System.Collections.ArrayList
 
 # ── Discos: estado e contadores de confiabilidade (SMART exposto pelo Windows)
-$o.disks = @(Get-CimInstance -Namespace root/Microsoft/Windows/Storage -ClassName MSFT_PhysicalDisk | ForEach-Object {
-    $r = $null
-    try { $r = $_ | Get-StorageReliabilityCounter -ErrorAction Stop } catch { }
+# SMART primeiro, por DeviceId, com Get-PhysicalDisk (o caminho mais compatível); depois a lista via CIM.
+$smart = @{}
+foreach ($pd in @(Get-PhysicalDisk)) {
+    try { $smart["$($pd.DeviceId)"] = ($pd | Get-StorageReliabilityCounter -ErrorAction Stop) }
+    catch { [void]$warn.Add("SMART do disco $($pd.DeviceId): $($_.Exception.Message)") }
+}
+$physical = @(Get-CimInstance -Namespace root/Microsoft/Windows/Storage -ClassName MSFT_PhysicalDisk)
+if ($physical.Count -eq 0) { [void]$warn.Add('MSFT_PhysicalDisk não retornou discos') }
+$o.disks = @(foreach ($d in $physical) {
+    $r = $smart["$($d.DeviceId)"]
     [pscustomobject]@{
-        Name = "$($_.FriendlyName)"; Media = [int]$_.MediaType; Bus = [int]$_.BusType; Health = [int]$_.HealthStatus; Size = [uint64]$_.Size
+        Name = "$($d.FriendlyName)"; Media = [int]$d.MediaType; Bus = [int]$d.BusType; Health = [int]$d.HealthStatus; Size = [uint64]$d.Size
         Temp = $r.Temperature; TempMax = $r.TemperatureMax; Wear = $r.Wear; Hours = $r.PowerOnHours
         RUnc = $r.ReadErrorsUncorrected; WUnc = $r.WriteErrorsUncorrected; RTot = $r.ReadErrorsTotal
     }

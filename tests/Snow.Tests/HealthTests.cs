@@ -95,6 +95,26 @@ public static class HealthTests
         Assert.True(r.Items.Any(i => i.Title == "Dispositivo desconhecido: driver não instalado"));
     }
 
+    [Test] public static void ThiagosRealPc()
+    {
+        // SMART real: SSD SATA com 203 erros de leitura não corrigidos; PS/2 fantasmas (código 24); 3 TDR.
+        var d = Healthy() with
+        {
+            Disks =
+            [
+                new DiskHealthData { Name = "SSD", MediaType = 4, BusType = 11, HealthStatus = 0, TemperatureC = 42, WearPercent = 0, PowerOnHours = 8192, ReadErrorsUncorrected = 203 },
+                new DiskHealthData { Name = "KBG40ZNS256G NVMe KIOXIA 256GB", MediaType = 4, BusType = 17, HealthStatus = 0, TemperatureC = 58 },
+            ],
+            ProblemDevices = [new ProblemDevice("Teclado Padrão PS/2", 24), new ProblemDevice("Microsoft PS/2 Mouse", 24)],
+            Events = new EventCounts { GpuDriverResets = 3, UnexpectedShutdowns = 1 },
+        };
+        var r = HealthAnalyzer.Analyze(d);
+        var titles = r.Items.Select(i => i.Title).ToList();
+        Assert.True(titles.Contains("SSD: 203 erro(s) não corrigido(s)"), string.Join(" | ", titles));
+        Assert.False(titles.Any(t => t.Contains("PS/2")), "PS/2 fantasma não é problema");
+        Assert.True(titles.Contains("KBG40ZNS256G NVMe KIOXIA 256GB: saudável"));
+    }
+
     [Test] public static void BatteryWear()
     {
         var r = HealthAnalyzer.Analyze(Healthy() with { Battery = new BatteryData(50000, 27000, 640) });
