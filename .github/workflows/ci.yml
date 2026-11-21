@@ -149,7 +149,7 @@ jobs:
       - name: Publicar
         shell: pwsh
         run: |
-          foreach ($rid in 'win-x64','win-arm64') {
+          foreach ($rid in 'win-x64','win-x86','win-arm64') {
             $out = "dist/Snow-$rid"
             $common = @('-c','Release','-r',$rid,'--self-contained','true','-p:PublishSingleFile=true','-p:IncludeNativeLibrariesForSelfExtract=true','-p:EnableCompressionInSingleFile=true','-p:DebugType=none','-o',$out)
             dotnet publish src/Snow.App @common
@@ -158,17 +158,32 @@ jobs:
             Compress-Archive -Path "$out/*" -DestinationPath "dist/Snow-$rid.zip" -Force
           }
           Get-ChildItem dist -Recurse -Include *.exe,*.zip | Select-Object FullName, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
+          # Confere a arquitetura gravada no cabeçalho PE de cada exe (0x8664 x64, 0x14c x86, 0xAA64 ARM64)
+          $expected = @{ 'win-x64' = 0x8664; 'win-x86' = 0x14c; 'win-arm64' = 0xAA64 }
+          foreach ($rid in $expected.Keys) {
+            foreach ($exe in Get-ChildItem "dist/Snow-$rid/*.exe") {
+              $b = [IO.File]::ReadAllBytes($exe.FullName)
+              $pe = [BitConverter]::ToInt32($b, 0x3C)
+              $machine = [BitConverter]::ToUInt16($b, $pe + 4)
+              Write-Host ("{0,-10} {1,-10} machine=0x{2:X}" -f $rid, $exe.Name, $machine)
+              if ($machine -ne $expected[$rid]) { throw "$($exe.Name) em $rid tem arquitetura errada" }
+            }
+          }
       - name: Smoke test dos executáveis publicados (CLI e interface, como o usuário recebe)
         shell: pwsh
         run: |
           & dist/Snow-win-x64/snow.exe version
           & dist/Snow-win-x64/snow.exe diagnose
           if ($LASTEXITCODE -ne 0) { throw "snow.exe publicado falhou" }
-          # Simula o download: o zip extraído carrega a marca "baixado da internet" (Zone.Identifier)
+          # Testa o conteúdo exato do zip entregue ao usuário
           Expand-Archive dist/Snow-win-x64.zip -DestinationPath extracted -Force
-          Get-ChildItem extracted -File | ForEach-Object { Set-Content -Path $_.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3" }
           $start = Get-Date
-          $p = Start-Process extracted/Snow.exe -ArgumentList "--screenshot", "$pwd\pubscreens" -PassThru
+          function Launch($exe, $out) {
+            $psi = [Diagnostics.ProcessStartInfo]::new((Resolve-Path $exe).Path, "--screenshot `"$out`"")
+            $psi.UseShellExecute = $false   # sem shell: nenhum diálogo pode travar o teste
+            [Diagnostics.Process]::Start($psi)
+          }
+          $p = Launch extracted/Snow.exe "$pwd\pubscreens"
           $ok = $p.WaitForExit(120000)
           Write-Host "Saiu: $ok · código: $($p.ExitCode)"
           Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=$start} -ErrorAction SilentlyContinue |
@@ -178,6 +193,12 @@ jobs:
           if (-not $ok) { $p.Kill(); throw "Snow.exe publicado travou" }
           if ($p.ExitCode -ne 0) { throw "Snow.exe publicado saiu com código $($p.ExitCode)" }
           if ((Get-ChildItem pubscreens -Filter *.png).Count -lt 5) { throw "Snow.exe publicado não renderizou as telas" }
+          # x86 (32 bits) roda no runner x64 via WOW64: valida o pacote de 32 bits também
+          & dist/Snow-win-x86/snow.exe diagnose
+          if ($LASTEXITCODE -ne 0) { throw "snow.exe x86 falhou" }
+          $p = Launch dist/Snow-win-x86/Snow.exe "$pwd\pubscreens86"
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "Snow.exe x86 travou" }
+          if ($p.ExitCode -ne 0 -or (Get-ChildItem pubscreens86 -Filter *.png).Count -lt 5) { throw "Snow.exe x86 falhou ($($p.ExitCode))" }
       - uses: actions/upload-artifact@v4
         with:
           name: Snow-executaveis
@@ -193,7 +214,7 @@ jobs:
           generate_release_notes: true
           body: |
             ## Snow Game Optimizer
-            Baixe o `.zip` da sua arquitetura (x64 na maioria dos PCs; ARM64 para Snapdragon), extraia e execute **Snow.exe** (o Windows pedirá permissão de Administrador).
+            Baixe o `.zip` da arquitetura do seu Windows (veja em **Configurações → Sistema → Sobre → Tipo de sistema**): **x64** para "sistema operacional de 64 bits, processador baseado em x64", **x86** para "sistema operacional de 32 bits", **ARM64** para Snapdragon/ARM, extraia e execute **Snow.exe** (o Windows pedirá permissão de Administrador).
             Os executáveis são autocontidos: não precisa instalar o .NET. `snow.exe` é a versão de linha de comando.
 
             Testado no CI em Windows build 20348 (família Windows 10) e 26100 (Windows 11 24H2).

@@ -53,7 +53,15 @@ O Snow não promete "+200 FPS". Cada ajuste traz uma nota "Na prática:" com o e
 Dados: `%ProgramData%\Snow\` (`backups\`, `logs\`, `state.json`).
 
 ## Download
-Baixe o `.zip` da página [Releases](../../releases) (x64 ou ARM64), extraia e execute **Snow.exe**. Os executáveis são autocontidos: não precisa instalar o .NET.
+Baixe o `.zip` da página [Releases](../../releases), extraia e execute **Snow.exe**.
+
+| Configurações → Sistema → Sobre → **Tipo de sistema** | Baixe |
+|---|---|
+| Sistema operacional de 64 bits, processador baseado em x64 | `Snow-win-x64.zip` |
+| Sistema operacional de 32 bits | `Snow-win-x86.zip` |
+| Processador baseado em ARM (Snapdragon) | `Snow-win-arm64.zip` |
+
+Se aparecer *"Este aplicativo não pode ser executado em seu PC"*, o zip é de outra arquitetura. Os executáveis são autocontidos: não precisa instalar o .NET.
 
 ## Linha de comando
 ```
