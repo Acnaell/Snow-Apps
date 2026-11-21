@@ -21,7 +21,7 @@
                            RenderOptions.BitmapScalingMode="HighQuality"/>
                     <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="SNOW" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource AccentGradient}"/>
-                        <TextBlock Text="APPS · GAMING · HEALTH · MONITOR" FontSize="8.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                        <TextBlock Text="APPS" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
                     </StackPanel>
                 </StackPanel>
 

@@ -69,12 +69,52 @@ jobs:
           & $cli diagnose --json | Out-File -Encoding utf8 diagnose-${{ matrix.os }}.json
           Get-Content diagnose-${{ matrix.os }}.json -Raw | ConvertFrom-Json | Out-Null   # JSON válido?
 
-      - name: Identificador de jogos (runner sem jogos → lista vazia, sem erro)
+      - name: Instalar jogos simulados (Riot/Epic) com os arquivos de exemplo
+        shell: pwsh
+        run: |
+          $fx = "tests/Snow.Tests/Fixtures"
+          $games = "$env:RUNNER_TEMP\games"
+          # League of Legends (Riot) + metadados com vanguard: true
+          New-Item -ItemType Directory -Force "$games\League of Legends\Config" | Out-Null
+          Copy-Item "$fx/lol_game.cfg" "$games\League of Legends\Config\game.cfg"
+          $meta = "$env:ProgramData\Riot Games\Metadata"
+          New-Item -ItemType Directory -Force "$meta\league_of_legends.live", "$meta\valorant.live" | Out-Null
+          (Get-Content "$fx/lol.product_settings.yaml" -Raw).Replace('D:/Riot Games/League of Legends', ("$games\League of Legends" -replace '\\','/')) |
+            Set-Content "$meta\league_of_legends.live\league_of_legends.live.product_settings.yaml"
+          # Valorant (Riot): instalação + configurações da conta
+          New-Item -ItemType Directory -Force "$games\VALORANT\live" | Out-Null
+          "product_install_full_path: `"$(("$games\VALORANT\live") -replace '\\','/')`"`ndependencies:`n    vanguard: true" |
+            Set-Content "$meta\valorant.live\valorant.live.product_settings.yaml"
+          New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\VALORANT\Saved\Config" | Out-Null
+          Copy-Item "$fx/valorant/*" "$env:LOCALAPPDATA\VALORANT\Saved\Config" -Recurse -Force
+          # Fortnite (Epic): manifesto + GameUserSettings.ini
+          New-Item -ItemType Directory -Force "$games\Fortnite", "$env:ProgramData\Epic\EpicGamesLauncher\Data\Manifests", "$env:LOCALAPPDATA\FortniteGame\Saved\Config\WindowsClient" | Out-Null
+          @{ AppName = 'Fortnite'; DisplayName = 'Fortnite'; InstallLocation = ("$games\Fortnite" -replace '\\','/'); bIsIncompleteInstall = $false } |
+            ConvertTo-Json | Set-Content "$env:ProgramData\Epic\EpicGamesLauncher\Data\Manifests\fortnite.item"
+          Copy-Item "$fx/fortnite_GameUserSettings.ini" "$env:LOCALAPPDATA\FortniteGame\Saved\Config\WindowsClient\GameUserSettings.ini"
+
+      - name: Jogos — diagnóstico, aplicar e restaurar (arquivo volta idêntico)
         shell: pwsh
         run: |
           $cli = "src/Snow.Cli/bin/Release/net8.0/snow-cli.exe"
           & $cli games
           if ($LASTEXITCODE -ne 0) { throw "games falhou" }
+          $out = & $cli games | Out-String
+          foreach ($g in 'Fortnite','League of Legends','VALORANT','Riot Vanguard','VSync ligado','multithread') {
+            if ($out -notmatch [regex]::Escape($g)) { throw "esperava '$g' na saída de games" }
+          }
+          $fn = "$env:LOCALAPPDATA\FortniteGame\Saved\Config\WindowsClient\GameUserSettings.ini"
+          $lol = "$env:RUNNER_TEMP\games\League of Legends\Config\game.cfg"
+          $before = (Get-FileHash $fn).Hash + (Get-FileHash $lol).Hash
+          foreach ($id in 'epic:fortnite','riot:league_of_legends') {
+            & $cli game-apply --id $id --preset alto --yes
+            if ($LASTEXITCODE -ne 0) { throw "game-apply $id falhou" }
+          }
+          if (((Get-FileHash $fn).Hash + (Get-FileHash $lol).Hash) -eq $before) { throw "nada mudou nos arquivos dos jogos" }
+          & $cli game-apply --id riot:valorant --preset alto --yes   # guiado: não deve editar
+          & $cli restore --all
+          if (((Get-FileHash $fn).Hash + (Get-FileHash $lol).Hash) -ne $before) { throw "arquivos dos jogos não voltaram idênticos" }
+          Write-Host "OK: aplicar → restaurar devolveu os arquivos byte a byte"
 
       - name: Plano de cada perfil
         shell: pwsh
