@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # Testes de unidade/integração com fakes: rodam em qualquer SO.
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet run --project tests/Snow.Tests -c Release
+
+  # Windows real, duas gerações:
+  #   windows-2022 → build 20348 (núcleo da família Windows 10 21H2)
+  #   windows-2025 → build 26100 (núcleo do Windows 11 24H2)
+  windows:
+    name: windows (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    env:
+      SNOW_DATA_DIR: ${{ github.workspace }}\snow-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build (solução inteira, incluindo WPF)
+        run: dotnet build Snow.sln -c Release
+
+      - name: Testes
+        run: dotnet run --project tests/Snow.Tests -c Release --no-build
+
+      - name: Versão do SO
+        shell: pwsh
+        run: |
+          $v = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+          "$($v.ProductName) build $($v.CurrentBuildNumber).$($v.UBR) $($v.DisplayVersion)"
+
+      - name: Diagnóstico real (texto + JSON)
+        shell: pwsh
+        run: |
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow.exe"
+          & $cli diagnose
+          if ($LASTEXITCODE -ne 0) { throw "diagnose falhou" }
+          & $cli diagnose --json | Out-File -Encoding utf8 diagnose-${{ matrix.os }}.json
+          Get-Content diagnose-${{ matrix.os }}.json -Raw | ConvertFrom-Json | Out-Null   # JSON válido?
+
+      - name: Plano de cada perfil
+        shell: pwsh
+        run: |
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow.exe"
+          foreach ($p in 'competitivo','desempenho','equilibrado') { & $cli plan --profile $p; if ($LASTEXITCODE) { throw $p } }
+
+      - name: Autoteste aplicar → verificar → restaurar (estado idêntico)
+        shell: pwsh
+        run: |
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow.exe"
+          foreach ($p in 'competitivo','desempenho','equilibrado') {
+            Write-Host "::group::selftest $p"
+            & $cli selftest --profile $p
+            $code = $LASTEXITCODE
+            Write-Host "::endgroup::"
+            if ($code -ne 0) { throw "selftest $p falhou ($code)" }
+          }
+
+      - name: Aplicar de verdade + restaurar pelo comando restore
+        shell: pwsh
+        run: |
+          $cli = "src/Snow.Cli/bin/Release/net8.0/snow.exe"
+          & $cli apply --profile competitivo --yes --no-restore-point
+          if ($LASTEXITCODE -ne 0) { throw "apply falhou" }
+          & $cli backups
+          & $cli restore --all
+          if ($LASTEXITCODE -ne 0) { throw "restore falhou" }
+
+      - name: Interface WPF abre e renderiza (tema escuro e claro)
+        shell: pwsh
+        run: |
+          $app = "src/Snow.App/bin/Release/net8.0-windows/Snow.exe"
+          foreach ($t in 'dark','light') {
+            $p = Start-Process $app -ArgumentList "--screenshot", "$pwd\screens", "--theme", $t -PassThru
+            if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "UI travou ($t)" }
+            if ($p.ExitCode -ne 0) { throw "UI saiu com código $($p.ExitCode) ($t)" }
+          }
+          $n = (Get-ChildItem screens -Filter *.png).Count
+          Write-Host "$n capturas geradas"
+          if ($n -lt 10) { throw "esperava 10 capturas, obtive $n" }
+          if (Select-String -Path "$env:SNOW_DATA_DIR\logs\*.log" -Pattern "Erro não tratado" -Quiet) { throw "erro não tratado no log" }
+
+      - name: Artefatos de verificação
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verificacao-${{ matrix.os }}
+          path: |
+            screens/
+            diagnose-*.json
+            snow-data/logs/
+
+  # Executáveis autocontidos (não exigem .NET instalado), x64 e ARM64.
+  package:
+    needs: [unit-tests, windows]
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Publicar
+        shell: pwsh
+        run: |
+          foreach ($rid in 'win-x64','win-arm64') {
+            $out = "dist/Snow-$rid"
+            $common = @('-c','Release','-r',$rid,'--self-contained','true','-p:PublishSingleFile=true','-p:IncludeNativeLibrariesForSelfExtract=true','-p:EnableCompressionInSingleFile=true','-p:DebugType=none','-o',$out)
+            dotnet publish src/Snow.App @common
+            dotnet publish src/Snow.Cli @common
+            Copy-Item README.md, LICENSE $out
+            Compress-Archive -Path "$out/*" -DestinationPath "dist/Snow-$rid.zip" -Force
+          }
+          Get-ChildItem dist -Recurse -Include *.exe,*.zip | Select-Object FullName, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
+      - name: Smoke test do executável publicado
+        shell: pwsh
+        run: |
+          & dist/Snow-win-x64/snow.exe version
+          & dist/Snow-win-x64/snow.exe diagnose
+          if ($LASTEXITCODE -ne 0) { throw "exe publicado falhou" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Snow-executaveis
+          path: dist/*.zip
+      - name: Release (em tags v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true

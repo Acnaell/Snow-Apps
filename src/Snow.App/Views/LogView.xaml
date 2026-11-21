@@ -1,0 +1,12 @@
+<UserControl x:Class="Snow.App.Views.LogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel Margin="32,28,32,90">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+            <TextBlock Text="Log" Style="{StaticResource H1}"/>
+            <TextBlock Style="{StaticResource Caption}" FontSize="13" Margin="0,4,0,0"
+                       Text="Tudo o que o Snow leu e alterou nesta sessão, com o valor anterior de cada item. O histórico completo fica em %ProgramData%\Snow\logs."/>
+        </StackPanel>
+        <TextBox Style="{StaticResource LogBox}" Text="{Binding LogText, Mode=OneWay}" CaretBrush="{DynamicResource TextBrush}"/>
+    </DockPanel>
+</UserControl>

@@ -1,0 +1,57 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{5BF15938-EE84-466D-9E27-B610500CDFEF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snow.Core", "src\Snow.Core\Snow.Core.csproj", "{CA147BC0-C528-409E-A5DF-DA89ACA7F1C5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snow.Platform", "src\Snow.Platform\Snow.Platform.csproj", "{45EE07C8-648B-47C9-9944-922CF749C8C3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snow.Cli", "src\Snow.Cli\Snow.Cli.csproj", "{41DA4E40-9859-4EDD-AD4A-AD2DE1C769DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snow.App", "src\Snow.App\Snow.App.csproj", "{89D28458-9681-46FC-B3F0-4B08ABEAEB43}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{9BE5EE06-C39B-42AB-9384-9C6A2B6FAFCB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snow.Tests", "tests\Snow.Tests\Snow.Tests.csproj", "{6D178864-1F86-46C4-AE64-22935792DD5C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CA147BC0-C528-409E-A5DF-DA89ACA7F1C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA147BC0-C528-409E-A5DF-DA89ACA7F1C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA147BC0-C528-409E-A5DF-DA89ACA7F1C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA147BC0-C528-409E-A5DF-DA89ACA7F1C5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{45EE07C8-648B-47C9-9944-922CF749C8C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45EE07C8-648B-47C9-9944-922CF749C8C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45EE07C8-648B-47C9-9944-922CF749C8C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45EE07C8-648B-47C9-9944-922CF749C8C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{41DA4E40-9859-4EDD-AD4A-AD2DE1C769DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{41DA4E40-9859-4EDD-AD4A-AD2DE1C769DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{41DA4E40-9859-4EDD-AD4A-AD2DE1C769DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{41DA4E40-9859-4EDD-AD4A-AD2DE1C769DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{89D28458-9681-46FC-B3F0-4B08ABEAEB43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{89D28458-9681-46FC-B3F0-4B08ABEAEB43}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{89D28458-9681-46FC-B3F0-4B08ABEAEB43}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{89D28458-9681-46FC-B3F0-4B08ABEAEB43}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D178864-1F86-46C4-AE64-22935792DD5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D178864-1F86-46C4-AE64-22935792DD5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D178864-1F86-46C4-AE64-22935792DD5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D178864-1F86-46C4-AE64-22935792DD5C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{CA147BC0-C528-409E-A5DF-DA89ACA7F1C5} = {5BF15938-EE84-466D-9E27-B610500CDFEF}
+		{45EE07C8-648B-47C9-9944-922CF749C8C3} = {5BF15938-EE84-466D-9E27-B610500CDFEF}
+		{41DA4E40-9859-4EDD-AD4A-AD2DE1C769DF} = {5BF15938-EE84-466D-9E27-B610500CDFEF}
+		{89D28458-9681-46FC-B3F0-4B08ABEAEB43} = {5BF15938-EE84-466D-9E27-B610500CDFEF}
+		{6D178864-1F86-46C4-AE64-22935792DD5C} = {9BE5EE06-C39B-42AB-9384-9C6A2B6FAFCB}
+	EndGlobalSection
+EndGlobal

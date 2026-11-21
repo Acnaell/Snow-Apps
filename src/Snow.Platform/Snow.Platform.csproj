@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Implementação Windows. Alvo net8.0 (não net8.0-windows) para que compile e seja testável
+    com fakes em qualquer SO; o assembly inteiro é marcado [SupportedOSPlatform("windows")].
+    Zero pacotes NuGet: WMI/CIM via PowerShell nativo, serviços via sc.exe, energia via powrprof.dll.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Snow.Platform</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Snow.Core\Snow.Core.csproj" />
+    <EmbeddedResource Include="Profiling\Collect.ps1" LogicalName="Snow.Collect.ps1" />
+    <InternalsVisibleTo Include="Snow.Tests" />
+  </ItemGroup>
+</Project>

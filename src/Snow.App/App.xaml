@@ -1,0 +1,15 @@
+<Application x:Class="Snow.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Índice 0 = tema (substituído pelo ThemeManager). Escuro é o padrão. -->
+                <ResourceDictionary Source="pack://application:,,,/Snow;component/Themes/Dark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/Snow;component/Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolVis"/>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

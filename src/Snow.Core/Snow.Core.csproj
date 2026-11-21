@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Domínio puro: sem dependências de Windows, testável em qualquer SO. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Snow.Core</RootNamespace>
+  </PropertyGroup>
+</Project>
