@@ -84,6 +84,17 @@ public static class HealthTests
         Assert.True(r.Items.Any(i => i.Title == "Driver de vídeo reiniciou 3 vez(es) em 30 dias" && i.Level == HealthLevel.Critico));
     }
 
+    [Test] public static void InboxDriversAndNamelessDevicesAreHandled()
+    {
+        var r = HealthAnalyzer.Analyze(Healthy() with
+        {
+            GpuName = "Microsoft Hyper-V Video", GpuDriverDate = new DateTime(2006, 6, 21),
+            ProblemDevices = [new ProblemDevice("", 28)],
+        });
+        Assert.False(r.Items.Any(i => i.Title.StartsWith("Driver de vídeo com")), "data simbólica de 2006 não é idade de driver");
+        Assert.True(r.Items.Any(i => i.Title == "Dispositivo desconhecido: driver não instalado"));
+    }
+
     [Test] public static void BatteryWear()
     {
         var r = HealthAnalyzer.Analyze(Healthy() with { Battery = new BatteryData(50000, 27000, 640) });

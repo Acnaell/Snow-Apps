@@ -143,12 +143,14 @@ public static class HealthAnalyzer
         var broken = d.ProblemDevices.Where(p => p.ErrorCode != 22).ToList(); // 22 = desativado pelo usuário
         foreach (var p in broken.Take(5))
             items.Add(new(HealthCategory.Dispositivos, p.ErrorCode == 28 ? HealthLevel.Atencao : HealthLevel.Atencao,
-                $"{p.Name}: {DeviceError(p.ErrorCode)}", $"Código de erro {p.ErrorCode} no Gerenciador de Dispositivos.",
+                $"{(string.IsNullOrWhiteSpace(p.Name) ? "Dispositivo desconhecido" : p.Name.Trim())}: {DeviceError(p.ErrorCode)}", $"Código de erro {p.ErrorCode} no Gerenciador de Dispositivos.",
                 p.ErrorCode == 28 ? "Instale o driver do fabricante." : "Atualize ou reinstale o driver deste dispositivo."));
         if (broken.Count > 5)
             items.Add(new(HealthCategory.Dispositivos, HealthLevel.Info, $"+{broken.Count - 5} dispositivo(s) com problema", "Veja no Gerenciador de Dispositivos."));
 
-        if (d.GpuDriverDate is { } date && d.GpuName is { } gpu)
+        // 2006-06-21 é a data simbólica dos drivers nativos do Windows: não indica idade real.
+        if (d.GpuDriverDate is { } date && d.GpuName is { } gpu && date.Year > 2006
+            && !gpu.Contains("Microsoft", StringComparison.OrdinalIgnoreCase) && !gpu.Contains("Hyper-V", StringComparison.OrdinalIgnoreCase))
         {
             var months = (int)((d.CollectedAt - date).TotalDays / 30.4);
             if (months >= 12)

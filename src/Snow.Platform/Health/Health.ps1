@@ -30,11 +30,15 @@ if ($static -and $full) {
 
 # ── Dispositivos com erro no Gerenciador de Dispositivos
 $o.devices = @(Get-CimInstance Win32_PnPEntity -Filter 'ConfigManagerErrorCode <> 0' | ForEach-Object {
-    [pscustomobject]@{ Name = "$($_.Name)"; Code = [int]$_.ConfigManagerErrorCode }
+    $n = if ($_.Name) { "$($_.Name)" } elseif ($_.Description) { "$($_.Description)" } else { "$($_.PNPDeviceID)" }
+    [pscustomobject]@{ Name = $n; Code = [int]$_.ConfigManagerErrorCode }
 })
 
 # ── Driver de vídeo
-$gpu = Get-CimInstance Win32_VideoController | Where-Object { "$($_.PNPDeviceID)" -notmatch 'VEN_1414' -and $_.DriverDate } | Select-Object -First 1
+# Ignora adaptadores da Microsoft (Basic Display, Hyper-V, Remote): drivers nativos usam a data simbólica 21/06/2006
+$gpu = Get-CimInstance Win32_VideoController | Where-Object {
+    $_.DriverDate -and "$($_.PNPDeviceID)" -notmatch 'VEN_1414' -and "$($_.AdapterCompatibility)" -notmatch 'Microsoft' -and "$($_.Name)" -notmatch 'Microsoft|Hyper-V|Basic'
+} | Select-Object -First 1
 if ($gpu) { $o.gpu = [pscustomobject]@{ Name = "$($gpu.Name)"; DriverDate = $gpu.DriverDate.ToString('yyyy-MM-dd') } }
 
 # ── Eventos dos últimos 30 dias
