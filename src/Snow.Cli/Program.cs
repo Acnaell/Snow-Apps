@@ -29,6 +29,7 @@ public static class Program
           snow-cli gpu                                  Fontes de VRAM (DXGI, registro, WMI) para diagnóstico
           snow-cli update [--check] [--yes]             Verifica/instala a versão mais nova (SHA-256 conferido)
           snow-cli monitor [--seconds 30] [--game auto|fortnite|lol|valorant]   Snow Monitor: uso, FPS e gargalo
+          snow-cli canrun                               Roda no meu PC? Requisitos oficiais × seu hardware
           snow-cli bench [--drives C,D]                 Pontuação: CPU (1 núcleo / todos), memória e discos
           snow-cli stress [--minutes 10] [--no-ram] [--no-cpu]   Estresse com conferência de erros e queda de clock
           snow-cli upgrade [--seconds 60]               Upgrade sem gargalo (mede o jogo aberto se --seconds > 0)
@@ -79,6 +80,7 @@ public static class Program
                 "monitor" => Monitor(opts),
                 "upgrade" => Upgrade(opts),
                 "bench" => Bench(opts),
+                "canrun" => CanRunCmd(),
                 "stress" => Stress(opts),
                 "compare" => Compare(args.Skip(1).Where(a => !a.StartsWith("--")).ToArray()),
                 "game-apply" => GameApply(opts),
@@ -385,6 +387,15 @@ public static class Program
     }
 
     private static Snow.Core.Monitor.SessionSummary? LastSummary;
+
+    private static int CanRunCmd()
+    {
+        var hw = HardwareProfiler.Collect();
+        Console.WriteLine($"{hw.Cpu.Name} → índice {Snow.Core.Compat.HardwareIndex.Cpu(hw.Cpu)?.ToString() ?? "?"} · {hw.PrimaryGpu?.Name} → índice {Snow.Core.Compat.HardwareIndex.Gpu(hw.PrimaryGpu?.Name)?.ToString() ?? "?"} · {hw.Memory.TotalGb:0} GB\n");
+        foreach (var r in Snow.Core.Compat.CanRun.EvaluateAll(hw).OrderByDescending(r => r.Level))
+            Console.WriteLine($"[{Snow.Core.Compat.CanRun.Label(r.Level),-15}] {r.Game.Name,-24} {r.Verdict}\n{"",18}{r.Detail}");
+        return 0;
+    }
 
     private static int Bench(Dictionary<string, string?> o)
     {

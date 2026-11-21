@@ -48,6 +48,7 @@ public sealed class MainViewModel : ObservableObject
         Health = new HealthViewModel(_log);
         Monitor = new MonitorViewModel(_log);
         Bench = new BenchViewModel(_log);
+        CanRun = new CanRunViewModel();
         Monitor.DiskHealth = () => Health.LastReport?.Data.Disks;
         Games.DiskHealth = () => Health.LastReport?.Data.Disks;
         Health.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(HealthViewModel.HasReport)) Monitor.RefreshUpgrades(); };
@@ -81,6 +82,7 @@ public sealed class MainViewModel : ObservableObject
     public HealthViewModel Health { get; }
     public MonitorViewModel Monitor { get; }
     public BenchViewModel Bench { get; }
+    public CanRunViewModel CanRun { get; }
 
     // ───────────── Atualizações ─────────────
     private readonly Snow.Platform.Updates.UpdateService _updater;
@@ -198,6 +200,7 @@ public sealed class MainViewModel : ObservableObject
             BusyText = "Procurando jogos instalados…";
             await Games.LoadAsync(_hw);
             Bench.Init(_hw, Health.LastReport?.Data.Disks);
+            CanRun.Load(_hw, Games.Games.Select(g => g.Report.Game.Id));
             Monitor.RefreshUpgrades();
         }
         catch (Exception e)

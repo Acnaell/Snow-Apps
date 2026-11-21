@@ -56,6 +56,9 @@ Cada achado vem com "O que fazer".
 
 Em todos os jogos, o Snow também mostra **a última medição do Monitor** (FPS e se o jogo ficou preso no processador ou na placa de vídeo), avisa se o jogo está **num disco com erros no SMART** e detecta **Easy Anti-Cheat / BattlEye** pela pasta do jogo. Conteúdos extras da Epic (DLC) e programas da Steam (Wallpaper Engine) não aparecem mais como jogos.
 
+## Roda no meu PC?
+Compara o hardware com os **requisitos oficiais** de 15 jogos populares (Fortnite, LoL, Valorant, CS2, Rocket League, Apex, Marvel Rivals, EA FC 26, PUBG, Overwatch 2, Minecraft, GTA V Enhanced, RDR2, Elden Ring, Cyberpunk 2077), com o link da fonte de cada um. Diz em qual nível roda (mínimo, recomendado, máximo), **o que falta** para o próximo e, se você já mediu o jogo no Desempenho, mostra o FPS real ao lado. Os índices de processador e placa de vídeo são estimativas (±10–15%). `snow-cli canrun`.
+
 ## Snow Monitor
 - **Uso em tempo real** pelos contadores do Windows (PDH): CPU, núcleo mais ocupado, GPU 3D, VRAM e RAM.
 - **Modo automático (padrão)**: o PresentMon observa todos os processos e o Snow detecta sozinho o jogo na tela (pelo nome do executável; navegador, Discord, OBS, papel de parede animado e launchers são ignorados). Funciona com qualquer jogo, não só os que têm perfil.
@@ -162,7 +165,7 @@ Os runners do GitHub são Windows Server (mesmo kernel do Windows 10/11 desktop,
 
 ## Roadmap
 - ~~Otimização por jogo (FPS Médio / FPS Alto)~~ ✅ v0.2: Fortnite, League of Legends, Valorant. Próximos: CS2, Apex Legends, Minecraft, Rocket League.
-- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4 · ~~Atualizador~~ ✅ v0.5 · ~~OBS Studio~~ ✅ v0.6 · ~~Detecção automática do jogo e upgrade sem gargalo~~ ✅ v0.7 · ~~Pontuação e estresse, Rocket League, qualquer jogo Unreal~~ ✅ v0.8
+- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4 · ~~Atualizador~~ ✅ v0.5 · ~~OBS Studio~~ ✅ v0.6 · ~~Detecção automática do jogo e upgrade sem gargalo~~ ✅ v0.7 · ~~Pontuação e estresse, Rocket League, qualquer jogo Unreal~~ ✅ v0.8 · ~~Roda no meu PC?~~ ✅ v0.9
 - Overlay no jogo (janela transparente, sem injeção) e histórico de sessões.
 - Mais jogos: CS2, Apex Legends, Minecraft, Rocket League.
 - Perfis de driver (NVIDIA/AMD) por jogo.

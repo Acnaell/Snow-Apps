@@ -36,7 +36,7 @@ public partial class MainWindow : Window
         {
             (NavDiag, "1-diagnostico"), (NavOpt, "2-otimizar"), (NavGames, "3-jogos"), (NavStartup, "4-inicializacao"),
             (NavHealth, "5-health"), (NavMonitor, "6-monitor"), (NavRestore, "7-restaurar"), (NavLog, "8-log"),
-            (NavBench, "9-benchmark"),
+            (NavBench, "9-benchmark"), (NavCanRun, "10-roda-no-meu-pc"),
         };
         foreach (var (nav, name) in pages)
         {

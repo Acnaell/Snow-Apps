@@ -106,6 +106,9 @@ jobs:
           $out = & $cli upgrade | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0 -or $out -notmatch 'Upgrade sem gargalo') { throw "upgrade falhou" }
+          $out = & $cli canrun | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch 'Cyberpunk 2077') { throw "canrun falhou" }
           $out = & $cli bench | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0 -or $out -notmatch 'leitura \d+ MB/s') { throw "bench falhou" }
