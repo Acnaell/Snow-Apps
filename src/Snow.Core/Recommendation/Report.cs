@@ -6,6 +6,8 @@ namespace Snow.Core.Recommendation;
 
 public static class Report
 {
+    public static string Speed(MemoryInfo m) => m.ConfiguredSpeedMts > 0 ? $"{m.ConfiguredSpeedMts} MT/s" : "velocidade não informada";
+
     public static string Gb(long bytes) => bytes <= 0 ? "?" : $"{bytes / 1024d / 1024 / 1024:0.#} GB";
 
     public static string Label(this TriState s) => s switch
@@ -54,7 +56,7 @@ public static class Report
         sb.AppendLine($"              Virtualização: {(c.VirtualizationFirmwareEnabled || c.HypervisorPresent ? "ativa" : "desativada na BIOS")}{(c.HypervisorPresent ? " (hypervisor presente)" : "")}");
         foreach (var g in hw.Gpus)
             sb.AppendLine($"GPU         : {g.Name} · {Gb(g.VramBytes)} · driver {g.DriverVersionFriendly}{(g.IsDiscrete ? " · dedicada" : g.IsVirtual ? " · virtual" : " · integrada")}{(g.SupportsHags ? " · HAGS ok" : "")}");
-        sb.AppendLine($"RAM         : {Gb(m.TotalBytes)} {m.Type} @ {m.ConfiguredSpeedMts} MT/s · {m.Channels}{(m.ChannelsEstimated ? " (estimado)" : "")} channel · {m.Modules.Count} módulo(s) · {m.UsedPercent:0}% em uso");
+        sb.AppendLine($"RAM         : {Gb(m.TotalBytes)} {(m.Type == "Desconhecido" ? "" : m.Type + " ")}@ {Speed(m)} · {m.Channels}{(m.ChannelsEstimated ? " (estimado)" : "")} channel · {m.Modules.Count} módulo(s) · {m.UsedPercent:0}% em uso");
         foreach (var d in hw.Storage.Disks)
             sb.AppendLine($"Disco {d.Number,-6}: {d.Model} · {d.Kind.Label()} · {Gb(d.SizeBytes)} · {(d.DriveLetters.Count > 0 ? string.Join(", ", d.DriveLetters.Select(l => l + ":")) : "sem letra")}{(d.DriveLetters.Contains(hw.Storage.SystemDrive) ? " (Windows)" : "")}");
         if (hw.Storage.GameLibraries.Count > 0)

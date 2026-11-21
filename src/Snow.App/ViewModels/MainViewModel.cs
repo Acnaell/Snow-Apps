@@ -146,8 +146,8 @@ public sealed class MainViewModel : ObservableObject
         Specs.Add(new("", "Placa de vídeo", g?.Name ?? "Não detectada",
             g is null ? "" : $"{Report.Gb(g.VramBytes)} VRAM · driver {g.DriverVersionFriendly}\n{(g.IsDiscrete ? "Dedicada" : g.IsVirtual ? "Adaptador virtual" : "Integrada")}{(g.SupportsHags ? " · suporta HAGS" : "")}" +
                         (hw.Gpus.Count > 1 ? $"\n+ {string.Join(", ", hw.Gpus.Where(x => x != g).Select(x => x.Name))}" : "")));
-        Specs.Add(new("", "Memória RAM", $"{Report.Gb(m.TotalBytes)} {m.Type}",
-            $"{m.ConfiguredSpeedMts} MT/s · {ChannelText(m)} · {m.Modules.Count} módulo(s)\n{m.UsedPercent:0}% em uso agora"));
+        Specs.Add(new("", "Memória RAM", $"{Report.Gb(m.TotalBytes)} {(m.Type == "Desconhecido" ? "" : m.Type)}".Trim(),
+            $"{Report.Speed(m)} · {ChannelText(m)} · {m.Modules.Count} módulo(s)\n{m.UsedPercent:0}% em uso agora"));
         var sys = hw.Storage.SystemDisk;
         Specs.Add(new("", "Armazenamento", sys is null ? "Desconhecido" : $"{sys.Kind.Label()} (Windows)",
             string.Join("\n", hw.Storage.Disks.Select(d => $"{string.Join(",", d.DriveLetters.Select(l => l + ":"))} {d.Kind.Label()} · {Report.Gb(d.SizeBytes)} · {d.Model}"))

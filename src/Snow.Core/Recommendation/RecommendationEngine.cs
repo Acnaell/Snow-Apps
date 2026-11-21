@@ -78,6 +78,12 @@ public static class RecommendationEngine
             return new(OptimizationProfile.Desempenho, reasons);
         }
 
+        if (gpu is null || gpu.IsVirtual)
+        {
+            reasons.Add("Máquina virtual ou sem driver de vídeo: aplicamos só ajustes seguros e genéricos (perfil Desempenho).");
+            return new(OptimizationProfile.Desempenho, reasons);
+        }
+
         if (!hasDiscrete)
         {
             reasons.Add("Sem GPU dedicada: o gargalo é a GPU integrada, então ajustes agressivos de CPU/energia rendem pouco.");

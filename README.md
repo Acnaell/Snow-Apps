@@ -75,6 +75,20 @@ snow selftest --profile <perfil>     # aplica → verifica → restaura → conf
 
 Os runners do GitHub são Windows Server (mesmo kernel do Windows 10/11 desktop, sem GPU física), então o CI valida o código de verdade no Windows. Recursos que dependem de GPU real e Game Bar são cobertos pelos testes com dados simulados.
 
+## Telas (capturas reais geradas pelo CI no Windows)
+| Escuro | Claro |
+|---|---|
+| ![Diagnóstico](docs/screenshots/1-diagnostico-dark.png) | ![Diagnóstico](docs/screenshots/1-diagnostico-light.png) |
+| ![Otimizar](docs/screenshots/2-otimizar-dark.png) | ![Otimizar](docs/screenshots/2-otimizar-light.png) |
+| ![Inicialização](docs/screenshots/3-inicializacao-dark.png) | ![Restaurar](docs/screenshots/4-restaurar-dark.png) |
+
+> As capturas vêm de um runner sem GPU física; num PC real, os cartões mostram sua CPU, GPU, RAM e discos.
+
+## Roadmap
+- **Próxima versão: otimização por jogo.** Detectar os jogos instalados (Steam/Epic) e, com base no hardware, oferecer predefinições **FPS médio** (qualidade/estabilidade) e **FPS alto** (competitivo) para cada jogo. Isso inclui os arquivos de configuração do jogo, opções de inicialização e ajustes conhecidos da comunidade, sempre com backup e reversão como no restante do app.
+- Perfis de driver (NVIDIA/AMD) por jogo.
+- Agendamento: reaplicar após grandes atualizações do Windows.
+
 ## Compilar
 ```powershell
 dotnet build Snow.sln -c Release

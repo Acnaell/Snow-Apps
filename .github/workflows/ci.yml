@@ -106,6 +106,22 @@ jobs:
           if ($n -lt 10) { throw "esperava 10 capturas, obtive $n" }
           if (Select-String -Path "$env:SNOW_DATA_DIR\logs\*.log" -Pattern "Erro não tratado" -Quiet) { throw "erro não tratado no log" }
 
+      - name: Publicar capturas no repositório (docs/screenshots)
+        if: matrix.os == 'windows-2025' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[screens]'))
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force docs/screenshots | Out-Null
+          Copy-Item screens/*.png docs/screenshots/ -Force
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "docs: capturas reais da interface geradas pelo CI no Windows [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          }
+
       - name: Artefatos de verificação
         if: always()
         uses: actions/upload-artifact@v4
