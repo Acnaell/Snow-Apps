@@ -101,6 +101,11 @@ jobs:
           $out = & $cli monitor --seconds 5 | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0 -or $out -notmatch 'CPU\s+\d') { throw "monitor falhou" }
+          $out = & $cli monitor --seconds 3 --game auto | Out-String   # sem PresentMon no CI: só hardware, sem erro
+          if ($LASTEXITCODE -ne 0) { throw "monitor auto falhou" }
+          $out = & $cli upgrade | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch 'Upgrade sem gargalo') { throw "upgrade falhou" }
 
       - name: Instalar jogos simulados (Riot/Epic) com os arquivos de exemplo
         shell: pwsh

@@ -8,7 +8,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Snow.App.Infrastructure;
+using Snow.Core.Hardware;
+using Snow.Core.Health;
 using Snow.Core.Monitor;
+using Snow.Core.Recommendation;
 using Snow.Platform.Monitor;
 using Snow.Platform.Services;
 
@@ -16,6 +19,15 @@ namespace Snow.App.ViewModels;
 
 public sealed record MonitorGame(string Key, string Name, string? Process);
 public sealed record ShareRow(string Label, double Percent);
+public sealed record UpgradeRow(UpgradeAdvice Advice)
+{
+    public string Priority => Advice.Priority.Label();
+    public string Component => Advice.Component;
+    public string Title => Advice.Title;
+    public string Detail => Advice.Detail;
+    public bool IsHigh => Advice.Priority == UpgradePriority.Alta;
+    public bool IsAvoid => Advice.Priority == UpgradePriority.Evitar;
+}
 
 public sealed class MonitorViewModel : ObservableObject
 {
@@ -26,9 +38,29 @@ public sealed class MonitorViewModel : ObservableObject
     private readonly List<UsageSample> _samples = [];
     private string? _compareBefore, _compareAfter;
     private double? _fpsCap;
+    private string? _activeApp;
+    private Snow.Core.Monitor.SessionSummary? _lastSession;
 
-    /// <summary>Taxa do monitor (vem do diagnóstico), usada como limite de FPS quando o jogo não tem um próprio.</summary>
-    public int RefreshHz { get; set; }
+    /// <summary>Hardware do diagnóstico: taxa do monitor (limite de FPS) e sugestões de upgrade.</summary>
+    public HardwareProfile? Hardware { get => _hardware; set { _hardware = value; RefreshUpgrades(); } }
+    private HardwareProfile? _hardware;
+    public int RefreshHz => Hardware?.MonitorRefreshHz ?? 0;
+    /// <summary>Discos do Snow Health (erros SMART), quando já analisado.</summary>
+    public Func<IReadOnlyList<DiskHealthData>?>? DiskHealth { get; set; }
+
+    public ObservableCollection<UpgradeRow> Upgrades { get; } = [];
+    private string _upgradeBasis = "";
+    public string UpgradeBasis { get => _upgradeBasis; set => Set(ref _upgradeBasis, value); }
+
+    public void RefreshUpgrades()
+    {
+        if (Hardware is null) return;
+        Upgrades.Clear();
+        foreach (var a in UpgradeAdvisor.Advise(Hardware, _lastSession, DiskHealth?.Invoke())) Upgrades.Add(new UpgradeRow(a));
+        UpgradeBasis = _lastSession is null
+            ? "Estimativa pelo hardware. Meça um jogo (Iniciar → jogar → Parar) para a análise usar o gargalo real."
+            : "Com base no hardware e na última medição: o upgrade que tira o gargalo atual sem criar outro.";
+    }
 
     public static string BenchDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SnowBench");
 
@@ -42,12 +74,15 @@ public sealed class MonitorViewModel : ObservableObject
         PickBeforeCommand = new RelayCommand(() => { _compareBefore = Pick("ANTES"); RunCompare(); });
         PickAfterCommand = new RelayCommand(() => { _compareAfter = Pick("DEPOIS"); RunCompare(); });
         OpenBenchFolderCommand = new RelayCommand(() => { Directory.CreateDirectory(BenchDir); Open(BenchDir); });
-        SelectedGame = Games[1];
+        SelectedGame = Games[0];
         PresentMonPath = PresentMonLive.Find();
     }
 
+    public const string Auto = "*";
+
     public IReadOnlyList<MonitorGame> Games { get; } =
     [
+        new("auto", "Automático", Auto),
         new("none", "Só hardware", null),
         new("fortnite", "Fortnite", "FortniteClient-Win64-Shipping.exe"),
         new("lol", "League of Legends", "League of Legends.exe"),
@@ -110,10 +145,14 @@ public sealed class MonitorViewModel : ObservableObject
             TimeShare.Clear(); OnPropertyChanged(nameof(HasSession));
             PresentMonPath = PresentMonLive.Find();
             _fpsCap = FpsCapReader.ForGame(SelectedGame?.Key, RefreshHz);
+            _activeApp = null;
             if (SelectedGame?.Process is { } proc && PresentMonPath is { } pmExe)
             {
-                _pm = new PresentMonLive(pmExe, proc);
-                Status = $"Medindo {SelectedGame.Name} com o PresentMon (ETW, sem injeção). Abra o jogo se ainda não abriu.";
+                var auto = proc == Auto;
+                _pm = new PresentMonLive(pmExe, auto ? null : proc);
+                Status = auto
+                    ? "Modo automático: abra qualquer jogo e o Snow detecta sozinho (PresentMon via ETW, sem injeção)."
+                    : $"Medindo {SelectedGame.Name} com o PresentMon (ETW, sem injeção). Abra o jogo se ainda não abriu.";
             }
             else
                 Status = SelectedGame?.Process is null ? "Medindo uso de hardware." : "PresentMon não encontrado: medindo só o hardware (sem FPS).";
@@ -133,6 +172,19 @@ public sealed class MonitorViewModel : ObservableObject
     private void Tick()
     {
         if (_pdh is null) return;
+        if (_pm is { IsAuto: true })
+        {
+            var app = _pm.UpdateActive();
+            if (!string.Equals(app, _activeApp, StringComparison.OrdinalIgnoreCase))
+            {
+                _activeApp = app;
+                _fpsCap = app is null ? null : FpsCapReader.ForGame(ActiveGameDetector.KeyFor(app), RefreshHz);
+                Status = app is null
+                    ? "Nenhum jogo na tela agora. Abra um jogo: o Snow detecta sozinho."
+                    : $"Jogo detectado: {ActiveGameDetector.DisplayName(app)}" + (_fpsCap is { } c ? $" · limite de FPS {c:0}" : " · sem limite de FPS");
+                _log.Info("Snow Monitor: " + Status);
+            }
+        }
         var (fps, low) = _pm?.Current() ?? (null, null);
         var s = _pdh.Sample(fps, low) with { FpsCap = _fpsCap };
         _samples.Add(s);
@@ -154,8 +206,10 @@ public sealed class MonitorViewModel : ObservableObject
         pts.Freeze();
         Chart = pts;
         if (_pm is { IsRunning: false }) Status = "O PresentMon parou: " + (_pm.LastError ?? "verifique se o jogo está aberto.");
-        else if (_pm is { NoFramesYet: true } && fps is null)
-            Status = $"Sem quadros de {SelectedGame?.Name} ainda. Se o jogo já está aberto, pare e inicie de novo a medição.";
+        else if (_pm is { IsAuto: false, NoFramesYet: true } && fps is null)
+            Status = SelectedGame?.Key == "lol"
+                ? "Sem quadros do League of Legends ainda: o jogo só existe durante a partida (o cliente/lobby é outro programa)."
+                : $"Sem quadros de {SelectedGame?.Name} ainda. Se o jogo já está aberto, pare e inicie de novo a medição.";
     }
 
     private void Stop()
@@ -163,20 +217,25 @@ public sealed class MonitorViewModel : ObservableObject
         _timer.Stop();
         IsRunning = false;
         var frames = _pm?.AllFrameTimes ?? [];
-        var gameName = SelectedGame?.Name ?? "sessao";
+        var mainApp = _pm?.MainApp;
+        var auto = _pm?.IsAuto == true;
+        var gameName = auto && mainApp is not null ? ActiveGameDetector.DisplayName(mainApp) : SelectedGame?.Name ?? "sessao";
+        var others = auto ? _pm!.GamesMeasured().Where(g => !string.Equals(g.App, mainApp, StringComparison.OrdinalIgnoreCase)).ToList() : [];
         _pm?.Dispose(); _pm = null;
         var summary = Snow.Core.Monitor.SessionSummary.From(_samples, frames.Count > 0 ? frames : null);
         TimeShare.Clear();
         foreach (var (k, pct) in summary.TimeShare.Where(kv => kv.Value > 0).OrderByDescending(kv => kv.Value))
             TimeShare.Add(new ShareRow(k.Label(), pct));
         OnPropertyChanged(nameof(HasSession));
-        var fr = summary.Frames is { } f ? $"FPS médio {f.AvgFps} · 1% low {f.Low1} · 0,1% low {f.Low01} · {f.Stutters} engasgos · " : "";
-        SessionSummary = $"{fr}{_samples.Count} s medidos · principal: {summary.Main.Label()}. {summary.Main.Advice()}";
+        var fr = summary.Frames is { } f ? $"{(auto ? gameName + ": " : "")}FPS médio {f.AvgFps} · 1% low {f.Low1} · 0,1% low {f.Low01} · {f.Stutters} engasgos · " : "";
+        var extra = string.Concat(others.Select(o => FrameStats.From(o.Frames) is { } st ? $"\nTambém medido: {ActiveGameDetector.DisplayName(o.App)} · FPS médio {st.AvgFps} · 1% low {st.Low1}" : ""));
+        SessionSummary = $"{fr}{_samples.Count} s medidos · principal: {summary.Main.Label()}. {summary.Main.Advice()}{extra}";
+        if (summary.Main is not Bottleneck.Desconhecido and not Bottleneck.SemCarga) { _lastSession = summary; RefreshUpgrades(); }
         try
         {
             Directory.CreateDirectory(BenchDir);
             var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-            var key = SelectedGame?.Key ?? "sessao";
+            var key = auto ? (mainApp is null ? "sessao" : ActiveGameDetector.KeyFor(mainApp)) : SelectedGame?.Key ?? "sessao";
             if (frames.Count > 0)
             {
                 // Mesmo formato de coluna do PresentMon: dá para comparar com o Snow Bench

@@ -40,6 +40,8 @@
                     </StackPanel>
                     <ListBox ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame}" Background="Transparent" BorderThickness="0"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}">
+                        <!-- sem o template padrão: desabilitado (durante a medição) ele pintava um fundo branco -->
+                        <ListBox.Template><ControlTemplate TargetType="ListBox"><ItemsPresenter/></ControlTemplate></ListBox.Template>
                         <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem" BasedOn="{StaticResource ProfileItem}">
@@ -97,6 +99,43 @@
                                     </TextBlock>
                                     <ProgressBar Value="{Binding Percent, Mode=OneWay}" Maximum="100" Height="8" VerticalAlignment="Center"/>
                                 </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Upgrade sem gargalo -->
+            <Border Style="{StaticResource Card}" Margin="0,0,12,12">
+                <StackPanel>
+                    <TextBlock Text="Upgrade sem gargalo" Style="{StaticResource H2}"/>
+                    <TextBlock Text="{Binding UpgradeBasis}" Style="{StaticResource Caption}" Margin="0,4,0,8" TextWrapping="Wrap"/>
+                    <ItemsControl ItemsSource="{Binding Upgrades}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <Border x:Name="Pill" Style="{StaticResource Badge}" HorizontalAlignment="Left" Background="{DynamicResource Surface2Brush}">
+                                                <TextBlock x:Name="PillText" Text="{Binding Priority}" FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding Component}" Style="{StaticResource Caption}" Margin="2,4,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource Body}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" FontSize="12.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsHigh}" Value="True">
+                                        <Setter TargetName="PillText" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsAvoid}" Value="True">
+                                        <Setter TargetName="PillText" Property="Foreground" Value="{DynamicResource BadBrush}"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

@@ -47,6 +47,8 @@ public sealed class MainViewModel : ObservableObject
         Games = new GamesViewModel(_service, _log, LoadBackups);
         Health = new HealthViewModel(_log);
         Monitor = new MonitorViewModel(_log);
+        Monitor.DiskHealth = () => Health.LastReport?.Data.Disks;
+        Health.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(HealthViewModel.HasReport)) Monitor.RefreshUpgrades(); };
         _updater = new Snow.Platform.Updates.UpdateService(_log);
         _updater.CleanupOldFiles();
         UpdateCommand = new RelayCommand(async () => await InstallUpdateAsync(), () => UpdateAvailable && !IsBusy);
@@ -181,7 +183,7 @@ public sealed class MainViewModel : ObservableObject
         {
             _hw = await Task.Run(HardwareProfiler.Collect);
             FillDiagnostics(_hw);
-            Monitor.RefreshHz = _hw.MonitorRefreshHz;
+            Monitor.Hardware = _hw;
             var rec = RecommendationEngine.Recommend(_hw);
             foreach (var p in Profiles) p.IsRecommended = p.Profile == rec.Profile;
             SelectedProfile = Profiles.First(p => p.Profile == rec.Profile);
@@ -192,6 +194,7 @@ public sealed class MainViewModel : ObservableObject
             await Games.LoadAsync(_hw);
             BusyText = "Snow Health: lendo discos e registros de eventos…";
             await Health.LoadAsync();
+            Monitor.RefreshUpgrades();
         }
         catch (Exception e)
         {
@@ -304,6 +307,7 @@ public sealed class MainViewModel : ObservableObject
             var hw = await Task.Run(HardwareProfiler.Collect);
             _hw = hw;
             FillDiagnostics(hw);
+            Monitor.Hardware = hw;
         }
         catch (Exception e) { _log.Error(e.Message); }
     }

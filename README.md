@@ -54,6 +54,8 @@ Cada achado vem com "O que fazer".
 
 ## Snow Monitor
 - **Uso em tempo real** pelos contadores do Windows (PDH): CPU, núcleo mais ocupado, GPU 3D, VRAM e RAM.
+- **Modo automático (padrão)**: o PresentMon observa todos os processos e o Snow detecta sozinho o jogo na tela (pelo nome do executável; navegador, Discord, OBS, papel de parede animado e launchers são ignorados). Funciona com qualquer jogo, não só os que têm perfil.
+- **Upgrade sem gargalo**: cruza o hardware, a última medição (quanto tempo o jogo ficou preso na CPU ou na GPU) e o SMART dos discos para indicar a próxima peça, e também o que **não** comprar agora (ex.: placa de vídeo nova com o jogo preso no processador). `snow-cli upgrade`.
 - **FPS, 1% low e frametime** ao vivo pelo [Intel PresentMon](https://github.com/GameTechDev/PresentMon) (eventos ETW, sem injetar nada no jogo).
 - **Gargalo** a cada segundo (GPU, CPU, teto de FPS ou memória) e o % do tempo em cada um na sessão. "Teto de FPS" só quando o FPS está colado no limite real (o do Fortnite é lido do arquivo do jogo; nos outros, a taxa do monitor). GPU folgada abaixo do limite = processador.
 - Cada medição usa uma sessão ETW própria e fecha as sessões que sobraram de medições anteriores (antes, uma segunda medição podia ficar sem FPS).
@@ -151,7 +153,7 @@ Os runners do GitHub são Windows Server (mesmo kernel do Windows 10/11 desktop,
 
 ## Roadmap
 - ~~Otimização por jogo (FPS Médio / FPS Alto)~~ ✅ v0.2: Fortnite, League of Legends, Valorant. Próximos: CS2, Apex Legends, Minecraft, Rocket League.
-- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4 · ~~Atualizador~~ ✅ v0.5 · ~~OBS Studio~~ ✅ v0.6
+- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4 · ~~Atualizador~~ ✅ v0.5 · ~~OBS Studio~~ ✅ v0.6 · ~~Detecção automática do jogo e upgrade sem gargalo~~ ✅ v0.7
 - Overlay no jogo (janela transparente, sem injeção) e histórico de sessões.
 - Mais jogos: CS2, Apex Legends, Minecraft, Rocket League.
 - Perfis de driver (NVIDIA/AMD) por jogo.

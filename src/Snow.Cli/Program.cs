@@ -28,7 +28,8 @@ public static class Program
           snow-cli health [--raw]                       Snow Health: nota de saúde, discos, estabilidade, drivers
           snow-cli gpu                                  Fontes de VRAM (DXGI, registro, WMI) para diagnóstico
           snow-cli update [--check] [--yes]             Verifica/instala a versão mais nova (SHA-256 conferido)
-          snow-cli monitor [--seconds 30] [--game fortnite|lol|valorant]   Snow Monitor: uso, FPS e gargalo
+          snow-cli monitor [--seconds 30] [--game auto|fortnite|lol|valorant]   Snow Monitor: uso, FPS e gargalo
+          snow-cli upgrade [--seconds 60]               Upgrade sem gargalo (mede o jogo aberto se --seconds > 0)
           snow-cli compare antes.csv depois.csv          Compara duas capturas do PresentMon/Snow Bench
           snow-cli games [--preset alto|medio]          Jogos instalados, pontos de melhora e prévia da predefinição
           snow-cli game-apply --id <id> --preset alto|medio [--yes]   Aplica a predefinição num jogo (com backup)
@@ -74,6 +75,7 @@ public static class Program
                 "gpu" => Gpu(),
                 "update" => RequireAdmin() ?? Update(opts),
                 "monitor" => Monitor(opts),
+                "upgrade" => Upgrade(opts),
                 "compare" => Compare(args.Skip(1).Where(a => !a.StartsWith("--")).ToArray()),
                 "game-apply" => GameApply(opts),
                 "selftest" => RequireAdmin() ?? SelfTest(opts),
@@ -342,35 +344,56 @@ public static class Program
         var seconds = o.TryGetValue("seconds", out var s) && int.TryParse(s, out var n) ? n : 30;
         using var pdh = new Snow.Platform.Monitor.PdhSampler();
         Snow.Platform.Monitor.PresentMonLive? pm = null;
-        if (o.TryGetValue("game", out var g) && g is not null && GameProcesses.TryGetValue(g, out var proc))
+        if (o.TryGetValue("game", out var g) && g is not null && (g == "auto" || GameProcesses.ContainsKey(g)))
         {
-            if (Snow.Platform.Monitor.PresentMonLive.Find() is { } exe) pm = new(exe, proc);
+            if (Snow.Platform.Monitor.PresentMonLive.Find() is { } exe) pm = new(exe, g == "auto" ? null : GameProcesses[g]);
             else Console.WriteLine("PresentMon não encontrado (Downloads): só uso de hardware, sem FPS.");
         }
         double? cap = null;
+        var refreshHz = 0;
         if (g is not null)
         {
-            var refresh = 0;
-            try { refresh = HardwareProfiler.Collect().MonitorRefreshHz; } catch { }
-            cap = Snow.Platform.Monitor.FpsCapReader.ForGame(g, refresh);
+            try { refreshHz = HardwareProfiler.Collect().MonitorRefreshHz; } catch { }
+            cap = g == "auto" ? null : Snow.Platform.Monitor.FpsCapReader.ForGame(g, refreshHz);
         }
         Console.WriteLine($"Snow Monitor · {seconds}s · contadores de GPU: {(pdh.HasGpuCounters ? "sim" : "indisponíveis")}");
         var samples = new List<Snow.Core.Monitor.UsageSample>();
         for (var i = 0; i < seconds; i++)
         {
             Thread.Sleep(1000);
+            if (pm is { IsAuto: true } && pm.UpdateActive() is { } app)
+                cap = Snow.Platform.Monitor.FpsCapReader.ForGame(Snow.Core.Monitor.ActiveGameDetector.KeyFor(app), refreshHz);
             var (fps, low) = pm?.Current() ?? (null, null);
             var x = pdh.Sample(fps, low) with { FpsCap = cap };
             samples.Add(x);
             Console.WriteLine($"{x.Time:HH:mm:ss}  CPU {x.CpuPercent,5:0.0}%  núcleo {x.BusiestCorePercent,5:0.0}%  GPU {(x.GpuPercent?.ToString("0.0") ?? "  -  "),5}%  VRAM {(x.VramUsedGb?.ToString("0.0") ?? "-"),4} GB  RAM {x.RamUsedPercent,3:0}%  FPS {(x.Fps?.ToString("0") ?? "-"),4}  → {Snow.Core.Monitor.BottleneckClassifier.Label(Snow.Core.Monitor.BottleneckClassifier.Classify(x))}");
         }
         var summary = Snow.Core.Monitor.SessionSummary.From(samples, pm?.AllFrameTimes);
+        if (pm?.MainApp is { } main) Console.WriteLine($"\nJogo medido: {Snow.Core.Monitor.ActiveGameDetector.DisplayName(main)}");
         pm?.Dispose();
+        LastSummary = summary;
         Console.WriteLine($"\nResumo: {Snow.Core.Monitor.BottleneckClassifier.Label(summary.Main)} · CPU média {summary.AvgCpu}% · GPU média {summary.AvgGpu?.ToString() ?? "-"}%");
         foreach (var (b, pct) in summary.TimeShare.Where(kv => kv.Value > 0).OrderByDescending(kv => kv.Value))
             Console.WriteLine($"  {Snow.Core.Monitor.BottleneckClassifier.Label(b),-28} {pct}% do tempo");
         if (summary.Frames is { } f) Console.WriteLine($"  FPS médio {f.AvgFps} · 1% low {f.Low1} · 0,1% low {f.Low01} · engasgos {f.Stutters}");
         Console.WriteLine($"  {Snow.Core.Monitor.BottleneckClassifier.Advice(summary.Main)}");
+        return 0;
+    }
+
+    private static Snow.Core.Monitor.SessionSummary? LastSummary;
+
+    private static int Upgrade(Dictionary<string, string?> o)
+    {
+        var seconds = o.TryGetValue("seconds", out var s) && int.TryParse(s, out var n) ? n : 0;
+        if (seconds > 0) Monitor(new Dictionary<string, string?>(o) { ["game"] = "auto" });
+        var hw = HardwareProfiler.Collect();
+        IReadOnlyList<Snow.Core.Health.DiskHealthData>? disks = null;
+        try { disks = Snow.Platform.Health.HealthCollector.Collect().Disks; } catch { }
+        var session = LastSummary is { Main: not Snow.Core.Monitor.Bottleneck.Desconhecido and not Snow.Core.Monitor.Bottleneck.SemCarga } ls ? ls : null;
+        Console.WriteLine($"\nUpgrade sem gargalo · {hw.Cpu.Name} · {hw.PrimaryGpu?.Name} · {hw.Memory.TotalGb:0} GB {hw.Memory.Type}");
+        Console.WriteLine(session is null ? "(estimativa pelo hardware; use --seconds 120 com um jogo aberto para usar o gargalo real)\n" : "(com base na medição acima)\n");
+        foreach (var a in Snow.Core.Recommendation.UpgradeAdvisor.Advise(hw, session, disks))
+            Console.WriteLine($"[{Snow.Core.Recommendation.UpgradeAdvisor.Label(a.Priority)}] {a.Component}: {a.Title}\n    {a.Detail}\n");
         return 0;
     }
 

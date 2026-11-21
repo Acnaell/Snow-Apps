@@ -67,6 +67,7 @@ public sealed class HealthViewModel : ObservableObject
     private Brush _scoreBrush = Brushes.Gray;
     public Brush ScoreBrush { get => _scoreBrush; set => Set(ref _scoreBrush, value); }
     public bool HasReport => Items.Count > 0;
+    public HealthReport? LastReport { get; private set; }
 
     public async Task LoadAsync()
     {
@@ -75,6 +76,7 @@ public sealed class HealthViewModel : ObservableObject
         try
         {
             var report = await Task.Run(HealthCollector.Run);
+            LastReport = report;
             Items.Clear();
             foreach (var i in report.Items) Items.Add(new HealthItemViewModel(i));
             Score = report.Score;
