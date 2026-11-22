@@ -170,7 +170,11 @@ public sealed class MainViewModel : ObservableObject
         get
         {
             var sel = Tweaks.Where(t => t.IsSelected).ToList();
+            var done = Tweaks.Count(t => t.IsAlreadyApplied && t.Definition.Profiles.Contains(SelectedProfile?.Profile ?? OptimizationProfile.Desempenho));
+            var undone = Tweaks.Count(t => t.WasUndone);
             return $"{sel.Count} ajuste(s) selecionado(s)" +
+                   (done > 0 ? $" · {done} já aplicado(s)" : "") +
+                   (undone > 0 ? $" · {undone} desfeito(s) pelo Windows" : "") +
                    (sel.Any(t => t.RequiresReboot) ? " · requer reiniciar" : "") +
                    (sel.Any(t => t.Irreversible) ? " · inclui limpeza (irreversível)" : "");
         }
@@ -274,8 +278,10 @@ public sealed class MainViewModel : ObservableObject
     {
         if (_hw is null) return;
         var plan = RecommendationEngine.BuildPlan(_hw, profile);
+        Dictionary<string, TweakState> states = [];
+        try { states = _service.States(plan.Items.Select(i => i.Definition)); } catch (Exception e) { _log.Error("Estado dos ajustes: " + e.Message); }
         Tweaks.Clear();
-        foreach (var p in plan.Items) Tweaks.Add(new TweakItemViewModel(p, OnTweakChanged));
+        foreach (var p in plan.Items) Tweaks.Add(new TweakItemViewModel(p, OnTweakChanged, states.GetValueOrDefault(p.Definition.Id)));
         OnPropertyChanged(nameof(SelectionSummary));
     }
 
@@ -313,6 +319,7 @@ public sealed class MainViewModel : ObservableObject
             LoadBackups();
             LoadStartup();
             await RefreshDiagnosticsOnlyAsync();
+            BuildPlan(SelectedProfile.Profile);
             if (plan.RequiresReboot &&
                 MessageBox.Show("Alguns ajustes (HAGS) só valem após reiniciar. Reiniciar agora?", "Snow", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
                 Start("shutdown.exe", "/r /t 5 /c \"Snow: concluindo otimizações\"");

@@ -165,7 +165,16 @@ public static class Program
 
     private static int Plan(Dictionary<string, string?> o)
     {
-        Console.WriteLine(Report.PlanToText(BuildPlan(o)));
+        var plan = BuildPlan(o);
+        Console.WriteLine(Report.PlanToText(plan));
+        if (OperatingSystem.IsWindows())
+        {
+            var states = OptimizationService.CreateDefault(new ConsoleLog()).States(plan.Selected.Select(p => p.Definition));
+            var done = plan.Selected.Where(p => states[p.Definition.Id].State == AppliedState.Aplicado).ToList();
+            var undone = plan.Selected.Where(p => states[p.Definition.Id].State == AppliedState.Desfeito).ToList();
+            Console.WriteLine($"\nJá aplicados no PC ({done.Count}): {(done.Count == 0 ? "nenhum" : string.Join(", ", done.Select(p => p.Definition.Id)))}");
+            if (undone.Count > 0) Console.WriteLine($"Desfeitos depois de aplicados ({undone.Count}): {string.Join(", ", undone.Select(p => p.Definition.Id))}");
+        }
         return 0;
     }
 

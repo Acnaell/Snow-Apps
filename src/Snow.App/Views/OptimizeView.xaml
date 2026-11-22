@@ -101,6 +101,8 @@
                                         <TextBlock Style="{StaticResource Caption}" Margin="0,5,0,0">
                                             <Run Text="Na prática:" FontWeight="SemiBold"/> <Run Text="{Binding HonestNote, Mode=OneWay}"/>
                                         </TextBlock>
+                                        <TextBlock x:Name="StateText" Text="{Binding StateText}" Style="{StaticResource Caption}" FontWeight="SemiBold" Foreground="{DynamicResource GoodBrush}" Margin="0,5,0,0" TextWrapping="Wrap"
+                                                   Visibility="{Binding HasState, Converter={StaticResource BoolVis}}"/>
                                         <TextBlock x:Name="ReasonText" Text="{Binding Reason}" Style="{StaticResource Caption}" Foreground="{DynamicResource WarnBrush}" Margin="0,5,0,0" Visibility="Collapsed"/>
                                         <TextBlock Text="{Binding ActionsText}" FontFamily="Cascadia Mono, Consolas" FontSize="11" Foreground="{DynamicResource MutedBrush}"
                                                    TextWrapping="Wrap" Margin="0,8,0,0"/>
@@ -110,6 +112,12 @@
                             <DataTemplate.Triggers>
                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                     <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding WasUndone}" Value="True">
+                                    <Setter TargetName="StateText" Property="Foreground" Value="{DynamicResource WarnBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsAlreadyApplied}" Value="True">
+                                    <Setter TargetName="Row" Property="Opacity" Value="0.8"/>
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding IsApplicable}" Value="False">
                                     <Setter TargetName="Row" Property="Opacity" Value="0.75"/>

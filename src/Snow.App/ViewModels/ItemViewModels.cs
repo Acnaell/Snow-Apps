@@ -37,10 +37,13 @@ public sealed class TweakItemViewModel : ObservableObject
     private readonly Action<TweakItemViewModel> _onChanged;
     private bool _isSelected;
 
-    public TweakItemViewModel(PlannedTweak planned, Action<TweakItemViewModel> onChanged)
+    public TweakItemViewModel(PlannedTweak planned, Action<TweakItemViewModel> onChanged, TweakState? state = null)
     {
         Definition = planned.Definition;
-        _isSelected = planned.Selected;
+        State = state?.State ?? AppliedState.Desconhecido;
+        LastApplied = state?.LastAppliedUtc?.ToLocalTime();
+        // Já valendo no PC: não marca de novo (dá para marcar à mão se quiser reaplicar).
+        _isSelected = planned.Selected && State != AppliedState.Aplicado;
         IsApplicable = planned.Applicability.IsApplicable;
         Reason = planned.Applicability.Reason ?? planned.Note;
         _onChanged = onChanged;
@@ -67,6 +70,17 @@ public sealed class TweakItemViewModel : ObservableObject
     public bool IsRisky => Definition.Risk != Risk.Seguro;
     public bool RequiresReboot => Definition.RequiresReboot;
     public bool Irreversible => !Definition.Reversible;
+    public AppliedState State { get; }
+    public DateTime? LastApplied { get; }
+    public bool IsAlreadyApplied => State == AppliedState.Aplicado;
+    public bool WasUndone => State == AppliedState.Desfeito;
+    public bool HasState => State is AppliedState.Aplicado or AppliedState.Desfeito;
+    public string StateText => State switch
+    {
+        AppliedState.Aplicado => "✔ Já está aplicado neste PC" + (LastApplied is { } d ? $" (pelo Snow em {d:dd/MM})" : ""),
+        AppliedState.Desfeito => $"↺ O Snow aplicou{(LastApplied is { } d ? $" em {d:dd/MM}" : "")}, mas o valor voltou ao anterior (atualização do Windows, driver ou outro programa). Aplique de novo.",
+        _ => "",
+    };
 
     public bool IsSelected
     {

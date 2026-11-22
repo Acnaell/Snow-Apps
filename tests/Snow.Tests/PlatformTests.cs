@@ -284,6 +284,30 @@ public static class ServiceTests
         Directory.Delete(dir, true);
     }
 
+    [Test] public static void DetectsAppliedAndUndoneTweaks()
+    {
+        var (svc, reg, _, _, dir) = Make();
+        var def = TweakCatalog.Tweaks.First(t => t.Reversible && t.Actions.Count > 0 && t.Actions.All(a => a is RegistryValueAction r && r.Value is not null));
+        var a = (RegistryValueAction)def.Actions[0];
+        Assert.Equal(AppliedState.NaoAplicado, svc.StateOf(def).State, "antes de aplicar");
+
+        var plan = RecommendationEngine.BuildPlan(Hw.Desktop(), OptimizationProfile.Competitivo).WithSelection([def.Id]);
+        svc.Apply(plan, new ApplyOptions(CreateRestorePoint: false));
+        var st = svc.StateOf(def);
+        Assert.Equal(AppliedState.Aplicado, st.State, def.Id);
+        Assert.True(st.LastAppliedUtc is not null);
+
+        // Windows Update (ou outro programa) apaga o valor → "desfeito", não "aplicado"
+        reg.Delete(a.Hive, a.Path, a.Name);
+        Assert.Equal(AppliedState.Desfeito, svc.StateOf(def).State);
+
+        // Valor já igual sem o Snow ter aplicado → aplicado (não sugere de novo)
+        var (svc2, reg2, _, _, dir2) = Make();
+        foreach (var x in def.Actions.Cast<RegistryValueAction>()) reg2.Set(x.Hive, x.Path, x.Name, RegValue.From(x.Kind, x.Value!));
+        Assert.Equal(AppliedState.Aplicado, svc2.StateOf(def).State, "já estava assim");
+        Directory.Delete(dir, true); Directory.Delete(dir2, true);
+    }
+
     [Test] public static void SelfTestPassesWithFakes()
     {
         var (svc, _, _, _, dir) = Make();

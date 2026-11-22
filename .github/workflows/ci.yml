@@ -227,8 +227,14 @@ jobs:
           & $cli apply --profile competitivo --yes --no-restore-point
           if ($LASTEXITCODE -ne 0) { throw "apply falhou" }
           & $cli backups
+          # Depois de aplicar, o plano tem que reconhecer o que já está valendo (antes sugeria tudo de novo)
+          $out = & $cli plan --profile competitivo | Out-String
+          Write-Host $out
+          if ($out -notmatch 'Já aplicados no PC \((\d+)\)' -or [int]$Matches[1] -lt 5) { throw "plano não detectou os ajustes já aplicados" }
           & $cli restore --all
           if ($LASTEXITCODE -ne 0) { throw "restore falhou" }
+          $out = & $cli plan --profile competitivo | Out-String
+          if ($out -match 'Desfeitos depois de aplicados') { throw "restauração pelo Snow não pode aparecer como 'desfeito'" }
 
       - name: Interface WPF abre e renderiza (tema escuro e claro)
         shell: pwsh

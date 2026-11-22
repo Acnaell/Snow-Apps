@@ -8,6 +8,11 @@ namespace Snow.Platform.Services;
 
 public enum TweakStatus { Pending, Applied, PartiallyApplied, Skipped, Failed, Reverted }
 
+/// <summary>Estado de um ajuste no PC agora, conferido valor a valor (registro, serviço, plano de energia…).</summary>
+public enum AppliedState { Desconhecido, NaoAplicado, Aplicado, Desfeito }
+
+public sealed record TweakState(AppliedState State, DateTime? LastAppliedUtc = null);
+
 public sealed class TweakBackup
 {
     public string TweakId { get; set; } = "";
@@ -233,6 +238,32 @@ public sealed class OptimizationService(ExecutorSet executors, BackupStore backu
         }
         lines.Add(ok ? "SELFTEST OK: aplicar → verificar → restaurar → estado idêntico." : "SELFTEST FALHOU.");
         return new(ok, lines);
+    }
+
+    /// <summary>
+    /// Confere no Windows se o ajuste já está valendo. "Desfeito" = o Snow aplicou (backup ativo), mas o valor voltou
+    /// (Windows Update, driver ou outro programa). Ações de limpeza não têm estado e são ignoradas.
+    /// </summary>
+    public TweakState StateOf(TweakDefinition def, IReadOnlyList<BackupSession>? sessions = null)
+    {
+        sessions ??= backups.List();
+        var last = sessions.Where(s => s.RestoredUtc is null)
+            .SelectMany(s => s.Tweaks.Where(t => t.TweakId == def.Id && t.Status is TweakStatus.Applied or TweakStatus.PartiallyApplied).Select(t => (s.CreatedUtc, t)))
+            .OrderByDescending(x => x.CreatedUtc).Select(x => ((DateTime, TweakBackup)?)x).FirstOrDefault();
+        // Ações puladas de propósito numa aplicação parcial (ex.: serviço inexistente) não contam.
+        var skipped = last?.Item2.Messages.Where(m => m.StartsWith('↷')).ToList() ?? [];
+        var acts = def.Actions.Where(a => a is not CleanupAction && !skipped.Any(m => m.Contains(a.Describe()))).ToList();
+        if (acts.Count == 0) return new(AppliedState.Desconhecido, last?.Item1);
+        var v = acts.Select(a => { try { return executors.For(a).Verify(a); } catch { return (bool?)null; } }).ToList();
+        if (v.All(x => x == true)) return new(AppliedState.Aplicado, last?.Item1);
+        if (v.Any(x => x == false)) return new(last is null ? AppliedState.NaoAplicado : AppliedState.Desfeito, last?.Item1);
+        return new(AppliedState.Desconhecido, last?.Item1);
+    }
+
+    public Dictionary<string, TweakState> States(IEnumerable<TweakDefinition> defs)
+    {
+        var sessions = backups.List();
+        return defs.ToDictionary(d => d.Id, d => StateOf(d, sessions));
     }
 
     private T? Safe<T>(Func<T> f)
