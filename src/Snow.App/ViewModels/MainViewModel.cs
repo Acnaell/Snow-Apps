@@ -46,6 +46,8 @@ public sealed class MainViewModel : ObservableObject
 
         Games = new GamesViewModel(_service, _log, LoadBackups);
         Health = new HealthViewModel(_log);
+        Maintenance = new MaintenanceViewModel(_log);
+        Processes = new ProcessesViewModel(_log, _startup, LoadStartup);
         Monitor = new MonitorViewModel(_log);
         Bench = new BenchViewModel(_log);
         CanRun = new CanRunViewModel();
@@ -80,6 +82,8 @@ public sealed class MainViewModel : ObservableObject
     // ───────────── Snow Gaming: jogos ─────────────
     public GamesViewModel Games { get; }
     public HealthViewModel Health { get; }
+    public MaintenanceViewModel Maintenance { get; }
+    public ProcessesViewModel Processes { get; }
     public MonitorViewModel Monitor { get; }
     public BenchViewModel Bench { get; }
     public CanRunViewModel CanRun { get; }
@@ -209,6 +213,8 @@ public sealed class MainViewModel : ObservableObject
             foreach (var w in _hw.CollectionWarnings) _log.Info("Aviso de coleta: " + w);
             BusyText = "Snow Health: lendo discos e registros de eventos…";
             await Health.LoadAsync();
+            Maintenance.Drives = Health.LastReport?.Data.DriveCare;
+            if (App.Options.ScreenshotDir is null) _ = Maintenance.ScanAsync();
             BusyText = "Procurando jogos instalados…";
             await Games.LoadAsync(_hw);
             Bench.Init(_hw, Health.LastReport?.Data.Disks);

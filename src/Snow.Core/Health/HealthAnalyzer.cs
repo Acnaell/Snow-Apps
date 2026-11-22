@@ -17,9 +17,12 @@ public static class HealthAnalyzer
         Space(d, items);
         Battery(d, items);
         System(d, items);
+        items.AddRange(BoardAdvisor.Items(d.Board, d.Security, d.CpuName, d.OsBuild));
+        if (d.DriveCare is { } dc) items.AddRange(DriveCareParser.Items(dc, d.Disks.Any(x => x.IsSsd && !x.IsVirtual)));
 
         var score = 100;
-        foreach (var i in items)
+        // Informativos da placa-mãe (modelo, slots, Windows 11) não são problemas: não tiram nota.
+        foreach (var i in items.Where(i => !(i.Category == HealthCategory.PlacaMae && i.Level == HealthLevel.Info)))
             score -= i.Level switch { HealthLevel.Critico => 25, HealthLevel.Atencao => 8, HealthLevel.Info => 2, _ => 0 };
         score = Math.Clamp(score, 0, 100);
         var verdict = score switch

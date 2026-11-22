@@ -25,6 +25,7 @@ public sealed record HealthItemViewModel(HealthItem Item)
         HealthCategory.Dispositivos => "Drivers e dispositivos",
         HealthCategory.Espaco => "Espaço em disco",
         HealthCategory.Bateria => "Bateria",
+        HealthCategory.PlacaMae => "Placa-mãe, TPM e Secure Boot",
         _ => "Sistema",
     };
     public string Icon => Item.Level switch
@@ -47,6 +48,8 @@ public sealed class HealthViewModel : ObservableObject
         OpenReliabilityCommand = new RelayCommand(() => Start("perfmon.exe", "/rel"));
         OpenDeviceManagerCommand = new RelayCommand(() => Start("devmgmt.msc", null));
         OpenStorageCommand = new RelayCommand(() => Start("ms-settings:storagesense", null));
+        OpenTpmCommand = new RelayCommand(() => Start("tpm.msc", null));
+        OpenSysInfoCommand = new RelayCommand(() => Start("msinfo32.exe", null));
     }
 
     public ObservableCollection<HealthItemViewModel> Items { get; } = [];
@@ -54,6 +57,8 @@ public sealed class HealthViewModel : ObservableObject
     public ICommand OpenReliabilityCommand { get; }
     public ICommand OpenDeviceManagerCommand { get; }
     public ICommand OpenStorageCommand { get; }
+    public ICommand OpenTpmCommand { get; }
+    public ICommand OpenSysInfoCommand { get; }
 
     private bool _isBusy;
     public bool IsBusy { get => _isBusy; set { Set(ref _isBusy, value); CommandManager.InvalidateRequerySuggested(); } }

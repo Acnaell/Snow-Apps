@@ -8,6 +8,7 @@ using Snow.Platform.Executors;
 using Snow.Platform.Games;
 using Snow.Platform.Profiling;
 using Snow.Platform.Services;
+using Snow.Platform.Health;
 
 [assembly: System.Runtime.Versioning.SupportedOSPlatform("windows")]
 
@@ -25,7 +26,9 @@ public static class Program
           snow-cli backups                              Lista as sessões de backup
           snow-cli startup                              Lista os itens de inicialização
           snow-cli purge-standby                        Esvazia a lista Standby da RAM
-          snow-cli health [--raw]                       Snow Health: nota de saúde, discos, estabilidade, drivers
+          snow-cli health [--raw]                       Snow Health: nota de saúde, discos, estabilidade, drivers, placa-mãe, TPM
+          snow-cli clean [--apply padrao|id1,id2]        Mede (ou limpa) temporários e caches. Sem --apply só mede
+          snow-cli processes [--seconds 10]             O que roda em segundo plano, quanto pesa e o que fazer
           snow-cli gpu                                  Fontes de VRAM (DXGI, registro, WMI) para diagnóstico
           snow-cli update [--check] [--yes]             Verifica/instala a versão mais nova (SHA-256 conferido)
           snow-cli monitor [--seconds 30] [--game auto|fortnite|lol|valorant]   Snow Monitor: uso, FPS e gargalo
@@ -75,6 +78,8 @@ public static class Program
                 "purge-standby" => RequireAdmin() ?? PurgeStandby(),
                 "games" => Games(opts),
                 "health" => Health(opts),
+                "clean" => opts.ContainsKey("apply") ? RequireAdmin() ?? Clean(opts) : Clean(opts),
+                "processes" => Processes(opts),
                 "gpu" => Gpu(),
                 "update" => RequireAdmin() ?? Update(opts),
                 "monitor" => Monitor(opts),
@@ -335,6 +340,52 @@ public static class Program
             }
         }
         foreach (var w in r.Data.Warnings) Console.WriteLine($"(aviso de coleta) {w}");
+        return 0;
+    }
+
+    private static int Clean(Dictionary<string, string?> o)
+    {
+        var apply = o.TryGetValue("apply", out var a) ? (a ?? "padrao") : null;
+        var cats = Snow.Core.Health.CleanupCatalog.All.ToList();
+        HashSet<string>? chosen = apply is null ? null
+            : apply is "padrao" or "default" ? cats.Where(c => c.DefaultOn).Select(c => c.Id).ToHashSet()
+            : apply.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        long total = 0;
+        Console.WriteLine(apply is null ? "══════════ LIMPEZA (só medindo) ══════════" : "══════════ LIMPEZA ══════════");
+        foreach (var c in cats)
+        {
+            if (chosen is not null && !chosen.Contains(c.Id)) continue;
+            if (chosen is null || c.Kind == Snow.Core.Health.CleanupKind.Manual)
+            {
+                var m = MaintenanceService.Measure(c);
+                total += c.Kind == Snow.Core.Health.CleanupKind.Manual || m.Skipped is not null ? 0 : m.Bytes;
+                Console.WriteLine($"{(c.DefaultOn ? "[x]" : "[ ]")} {c.Id,-15} {Snow.Core.Health.CleanupCatalog.Size(m.Bytes),9}  {c.Title}{(m.Skipped is null ? "" : $"  (agora não: {m.Skipped})")}");
+            }
+            else
+            {
+                var r = MaintenanceService.Clean(c);
+                total += r.Bytes;
+                Console.WriteLine($"{c.Id,-15} {Snow.Core.Health.CleanupCatalog.Size(r.Bytes),9}  {r.Files:N0} arquivo(s){(r.Failed > 0 ? $", {r.Failed} em uso" : "")}{(r.Skipped is null ? "" : $"  (pulado: {r.Skipped})")}");
+            }
+        }
+        Console.WriteLine(apply is null ? $"\nDá para liberar até {Snow.Core.Health.CleanupCatalog.Size(total)}. [x] = marcado por padrão. Para limpar: snow-cli clean --apply padrao"
+                                        : $"\nLiberado: {Snow.Core.Health.CleanupCatalog.Size(total)}");
+        var d = MaintenanceService.ReadDriveCare();
+        Console.WriteLine($"TRIM: {d.TrimEnabled?.ToString() ?? "?"} · otimização semanal: {d.ScheduledOptimization?.ToString() ?? "?"}");
+        return 0;
+    }
+
+    private static int Processes(Dictionary<string, string?> o)
+    {
+        var secs = o.TryGetValue("seconds", out var s) && int.TryParse(s, out var n) ? Math.Clamp(n, 2, 120) : 10;
+        Console.WriteLine($"Medindo o segundo plano por {secs} s (feche os jogos para uma leitura limpa)…");
+        var r = MaintenanceService.SampleProcesses(secs);
+        Console.WriteLine($"\n{r.Summary}\nMemória em segundo plano: {Snow.Core.Health.CleanupCatalog.Size(r.BackgroundBytes)}\n");
+        foreach (var f in r.Findings)
+        {
+            Console.WriteLine($"[{f.Level}] {f.Display} ({f.Usage.App}): CPU {f.Usage.CpuAvg:0.#}% · RAM {Snow.Core.Health.CleanupCatalog.Size(f.Usage.PrivateBytes)}{(f.CanClose ? "" : " · não fechar")}");
+            Console.WriteLine($"         → {f.Advice}");
+        }
         return 0;
     }
 

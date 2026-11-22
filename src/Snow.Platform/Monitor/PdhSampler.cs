@@ -16,12 +16,12 @@ public sealed class PdhSampler : IDisposable
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct PDH_FMT_COUNTERVALUE_ITEM { public IntPtr szName; public PDH_FMT_COUNTERVALUE FmtValue; }
 
-    [DllImport("pdh.dll", CharSet = CharSet.Unicode)] private static extern uint PdhOpenQueryW(string? dataSource, IntPtr userData, out IntPtr query);
-    [DllImport("pdh.dll", CharSet = CharSet.Unicode)] private static extern uint PdhAddEnglishCounterW(IntPtr query, string path, IntPtr userData, out IntPtr counter);
-    [DllImport("pdh.dll")] private static extern uint PdhCollectQueryData(IntPtr query);
+    [DllImport("pdh.dll", CharSet = CharSet.Unicode)] internal static extern uint PdhOpenQueryW(string? dataSource, IntPtr userData, out IntPtr query);
+    [DllImport("pdh.dll", CharSet = CharSet.Unicode)] internal static extern uint PdhAddEnglishCounterW(IntPtr query, string path, IntPtr userData, out IntPtr counter);
+    [DllImport("pdh.dll")] internal static extern uint PdhCollectQueryData(IntPtr query);
     [DllImport("pdh.dll")] private static extern uint PdhGetFormattedCounterValue(IntPtr counter, uint format, out uint type, out PDH_FMT_COUNTERVALUE value);
     [DllImport("pdh.dll", CharSet = CharSet.Unicode)] private static extern uint PdhGetFormattedCounterArrayW(IntPtr counter, uint format, ref uint bufferSize, out uint itemCount, IntPtr buffer);
-    [DllImport("pdh.dll")] private static extern uint PdhCloseQuery(IntPtr query);
+    [DllImport("pdh.dll")] internal static extern uint PdhCloseQuery(IntPtr query);
 
     private const uint PDH_FMT_DOUBLE = 0x00000200;
     private const uint PDH_FMT_NOCAP100 = 0x00008000;
@@ -57,7 +57,7 @@ public sealed class PdhSampler : IDisposable
         return PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE | PDH_FMT_NOCAP100, out _, out var v) == 0 && v.CStatus == 0 ? v.doubleValue : null;
     }
 
-    private static List<(string name, double value)> Array(IntPtr counter)
+    internal static List<(string name, double value)> Array(IntPtr counter)
     {
         var list = new List<(string, double)>();
         if (counter == IntPtr.Zero) return list;

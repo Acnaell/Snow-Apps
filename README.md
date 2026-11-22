@@ -53,8 +53,15 @@ Nota de saúde de 0 a 100, **somente leitura** e sem drivers. Ela cobre:
 - **Estabilidade** nos últimos 30 dias: telas azuis, resets do driver de vídeo (TDR), erros de hardware (WHEA), desligamentos inesperados e apps que travam.
 - **Dispositivos** com erro e idade do driver de vídeo.
 - **Espaço** em disco, **bateria** (desgaste e ciclos) e reinicialização pendente.
+- **Placa-mãe, TPM e Secure Boot**: modelo e BIOS, slots de memória livres, TPM (versão e se está ligado), UEFI/Legacy, Secure Boot e disco GPT/MBR. Diz **como conseguir TPM 2.0** na sua plataforma: ligar o fTPM (AMD) ou o PTT (Intel 6ª geração em diante) na BIOS, comprar um módulo para o conector TPM (Xeon E5 / X99 de marca) ou avisar que placas X99 chinesas quase nunca aceitam. Também avisa quando o processador não está na lista do Windows 11. Lembra que o Valorant no Windows 11 exige TPM 2.0 e Secure Boot.
 
 Cada achado vem com "O que fazer".
+
+### Limpeza e manutenção
+Mede antes de apagar e só mexe no que o Windows e os apps recriam sozinhos: temporários, atualizações já instaladas, Otimização de Entrega, relatórios de erro, logs antigos, caches de interface da Steam/Epic/Discord (só com o app fechado) e, opcionais, cache do Spotify, despejos de memória, caches de shader e Lixeira. Windows.old é medido e aberto no assistente do Windows. Arquivos em uso e links (junctions) são ignorados. **Não** limpa Prefetch, registro, pastas de jogos/anti-cheat nem o cache dos navegadores (a tela explica por quê). Também confere **TRIM** e a **otimização semanal das unidades**, otimiza agora (TRIM no SSD, desfragmentação só no HD) e limpa componentes antigos do Windows (DISM). `snow-cli clean [--apply padrao|ids]`.
+
+### Processos em segundo plano
+Mede por 10 s quanto cada app usa de CPU e RAM **pelas contagens de desempenho do Windows**, sem abrir nenhum processo (seguro com Vanguard). Para cada app pesado explica o que fazer (aceleração de hardware do Discord, abas do navegador, software de RGB, sincronização do OneDrive…), oferece **Fechar** e **Tirar da inicialização**. Jogos, anti-cheat (Vanguard, EAC, BattlEye, FACEIT), clientes da Riot, Windows e antivírus nunca podem ser fechados pelo Snow. `snow-cli processes [--seconds 10]`.
 
 Em todos os jogos, o Snow também mostra **a última medição do Monitor** (FPS e se o jogo ficou preso no processador ou na placa de vídeo), avisa se o jogo está **num disco com erros no SMART** e detecta **Easy Anti-Cheat / BattlEye** pela pasta do jogo. Conteúdos extras da Epic (DLC) e programas da Steam (Wallpaper Engine) não aparecem mais como jogos.
 
@@ -167,7 +174,7 @@ Os runners do GitHub são Windows Server (mesmo kernel do Windows 10/11 desktop,
 
 ## Roadmap
 - ~~Otimização por jogo (FPS Médio / FPS Alto)~~ ✅ v0.2: Fortnite, League of Legends, Valorant. Próximos: CS2, Apex Legends, Minecraft, Rocket League.
-- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4 · ~~Atualizador~~ ✅ v0.5 · ~~OBS Studio~~ ✅ v0.6 · ~~Detecção automática do jogo e upgrade sem gargalo~~ ✅ v0.7 · ~~Pontuação e estresse, Rocket League, qualquer jogo Unreal~~ ✅ v0.8 · ~~Roda no meu PC?~~ ✅ v0.9
+- ~~Snow Health~~ ✅ v0.3 · ~~Snow Monitor~~ ✅ v0.4 · ~~Atualizador~~ ✅ v0.5 · ~~OBS Studio~~ ✅ v0.6 · ~~Detecção automática do jogo e upgrade sem gargalo~~ ✅ v0.7 · ~~Pontuação e estresse, Rocket League, qualquer jogo Unreal~~ ✅ v0.8 · ~~Roda no meu PC?~~ ✅ v0.9 · ~~Limpeza, processos, placa-mãe e TPM~~ ✅ v0.11
 - Overlay no jogo (janela transparente, sem injeção) e histórico de sessões.
 - Mais jogos: CS2, Apex Legends, Minecraft, Rocket League.
 - Perfis de driver (NVIDIA/AMD) por jogo.

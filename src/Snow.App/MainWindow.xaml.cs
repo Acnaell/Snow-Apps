@@ -21,7 +21,12 @@ public partial class MainWindow : Window
         Loaded += async (_, _) =>
         {
             await _vm.RefreshAsync();
-            if (App.Options.ScreenshotDir is { } dir) await CaptureAllPagesAsync(dir);
+            if (App.Options.ScreenshotDir is { } dir)
+            {
+                await _vm.Maintenance.ScanAsync();
+                await _vm.Processes.AnalyzeAsync(3);
+                await CaptureAllPagesAsync(dir);
+            }
         };
     }
 
@@ -36,7 +41,7 @@ public partial class MainWindow : Window
         {
             (NavDiag, "1-diagnostico"), (NavOpt, "2-otimizar"), (NavGames, "3-jogos"), (NavStartup, "4-inicializacao"),
             (NavHealth, "5-health"), (NavMonitor, "6-monitor"), (NavRestore, "7-restaurar"), (NavLog, "8-log"),
-            (NavBench, "9-benchmark"), (NavCanRun, "10-roda-no-meu-pc"),
+            (NavBench, "9-benchmark"), (NavCanRun, "10-roda-no-meu-pc"), (NavCleanup, "11-limpeza"), (NavProcesses, "12-processos"),
         };
         foreach (var (nav, name) in pages)
         {

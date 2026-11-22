@@ -2,7 +2,7 @@ namespace Snow.Core.Health;
 
 public enum HealthLevel { Ok, Info, Atencao, Critico }
 
-public enum HealthCategory { Discos, Estabilidade, Hardware, Dispositivos, Espaco, Bateria, Sistema }
+public enum HealthCategory { Discos, Estabilidade, Hardware, Dispositivos, Espaco, Bateria, Sistema, PlacaMae }
 
 /// <summary>Dados brutos lidos do Windows (somente leitura, sem drivers).</summary>
 public sealed record DiskHealthData
@@ -64,6 +64,11 @@ public sealed record HealthData
     public DateTime? GpuDriverDate { get; init; }
     public double UptimeDays { get; init; }
     public bool RebootPending { get; init; }
+    public BoardInfo? Board { get; init; }
+    public SecurityState Security { get; init; } = new();
+    public DriveCare? DriveCare { get; init; }
+    public string CpuName { get; init; } = "";
+    public int OsBuild { get; init; }
     public DateTime CollectedAt { get; init; } = DateTime.Now;
     public IReadOnlyList<string> Warnings { get; init; } = [];
 }

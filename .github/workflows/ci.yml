@@ -84,6 +84,7 @@ jobs:
           $out = & $cli health | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0 -or $out -notmatch 'SNOW HEALTH: \d+/100') { throw "health falhou" }
+          if ($out -notmatch 'PlacaMae' -or $out -notmatch 'Placa-mãe: ') { throw "health não leu a placa-mãe" }
           if ($out -match 'Coleta falhou') { throw "coleta do Health falhou" }
 
       - name: DXGI responde (adaptadores de vídeo pelo DirectX)
@@ -130,6 +131,19 @@ jobs:
           $out = & $cli stress --minutes 0.4 | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0 -or $out -notmatch 'Processador estável' -or $out -notmatch 'Memória sem erros') { throw "stress falhou" }
+          # Limpeza: arquivo velho no %TEMP% some, arquivo novo fica
+          $old = Join-Path $env:TEMP 'snow-ci-velho.tmp'; $new = Join-Path $env:TEMP 'snow-ci-novo.tmp'
+          Set-Content $old 'x'; Set-Content $new 'y'; (Get-Item $old).LastWriteTime = (Get-Date).AddDays(-5)
+          $out = & $cli clean | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch 'temp\.user' -or $out -notmatch 'TRIM: ') { throw "clean (medir) falhou" }
+          if (-not (Test-Path $old)) { throw "medir não pode apagar nada" }
+          $out = & $cli clean --apply temp.user | Out-String
+          Write-Host $out
+          if ((Test-Path $old) -or -not (Test-Path $new)) { throw "clean --apply temp.user não respeitou a idade" }
+          $out = & $cli processes --seconds 3 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch 'Segundo plano') { throw "processes falhou" }
 
       - name: Instalar jogos simulados (Riot/Epic) com os arquivos de exemplo
         shell: pwsh

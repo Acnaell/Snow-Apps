@@ -20,7 +20,13 @@ public static class HealthCollector
             var result = PowerShell.Run(r.ReadToEnd(), TimeSpan.FromMinutes(3));
             var start = result.StdOut.IndexOf('{');
             if (start < 0) return new HealthData { Warnings = [$"Coleta falhou: {result.StdErr.Trim()}"] };
-            return Parse(result.StdOut[start..]);
+            var data = Parse(result.StdOut[start..]);
+            return data with
+            {
+                Security = data.Security with { Uefi = FirmwareIsUefi() },
+                DriveCare = MaintenanceService.ReadDriveCare(),
+                OsBuild = Environment.OSVersion.Version.Build,
+            };
         }
         catch (Exception e) { return new HealthData { Warnings = [$"Coleta falhou: {e.Message}"] }; }
     }
@@ -90,8 +96,40 @@ public static class HealthCollector
             GpuDriverDate = driverDate,
             UptimeDays = Double(root, "uptimeDays") ?? 0,
             RebootPending = root.TryGetProperty("rebootPending", out var rp) && rp.ValueKind == JsonValueKind.True,
+            Board = ParseBoard(root),
+            Security = new SecurityState
+            {
+                Tpm = root.TryGetProperty("tpm", out var tp) && tp.ValueKind == JsonValueKind.Object
+                    ? new TpmInfo(true, Bool(tp, "Enabled"), Bool(tp, "Activated"), Str(tp, "Spec") ?? "", Str(tp, "Maker") ?? "")
+                    : null,
+                SecureBoot = root.TryGetProperty("secureBoot", out var sbv) && sbv.ValueKind is JsonValueKind.True or JsonValueKind.False ? sbv.ValueKind == JsonValueKind.True : null,
+                SystemDiskGpt = root.TryGetProperty("systemDiskGpt", out var gpt) && gpt.ValueKind is JsonValueKind.True or JsonValueKind.False ? gpt.ValueKind == JsonValueKind.True : null,
+            },
+            CpuName = Str(root, "cpuName") ?? "",
             Warnings = Items(root, "warnings").Select(w => w.ValueKind == JsonValueKind.String ? w.GetString()! : w.ToString()).ToList(),
         };
+    }
+
+    private static BoardInfo? ParseBoard(JsonElement root)
+    {
+        if (!root.TryGetProperty("board", out var b) || b.ValueKind != JsonValueKind.Object) return null;
+        DateTime? date = DateTime.TryParseExact(Str(b, "BiosDate"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
+        return new BoardInfo
+        {
+            Maker = Str(b, "Maker") ?? "", Product = Str(b, "Product") ?? "", BiosVersion = Str(b, "Bios") ?? "", BiosDate = date,
+            MemorySlots = Int(b, "Slots") ?? 0, MemoryUsed = Int(b, "Used") ?? 0,
+            MaxMemoryBytes = Long(b, "MaxKB") is > 0 and var kb ? kb * 1024 : null,
+        };
+    }
+
+    private static bool Bool(JsonElement e, string n) => e.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.True;
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")] private static extern bool GetFirmwareType(out int type);
+
+    /// <summary>GetFirmwareType: 1 = BIOS Legacy, 2 = UEFI.</summary>
+    private static bool? FirmwareIsUefi()
+    {
+        try { return GetFirmwareType(out var t) ? t switch { 2 => true, 1 => false, _ => null } : null; } catch { return null; }
     }
 
     // Helpers tolerantes ao JSON do PowerShell 5.1 (arrays às vezes vêm como {value,Count}; números às vezes como string)

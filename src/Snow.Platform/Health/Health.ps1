@@ -73,6 +73,32 @@ $o.events = [pscustomobject]$ev
 $rel = Get-CimInstance Win32_ReliabilityStabilityMetrics | Sort-Object TimeGenerated -Descending | Select-Object -First 1
 if ($rel) { $o.stability = [double]$rel.SystemStabilityIndex }
 
+# ── Placa-mãe, BIOS e slots de memória
+$bb = Get-CimInstance Win32_BaseBoard | Select-Object -First 1
+$bios = Get-CimInstance Win32_BIOS | Select-Object -First 1
+$arr = @(Get-CimInstance Win32_PhysicalMemoryArray | Where-Object { [int]$_.Use -eq 3 })
+$slots = ($arr | Measure-Object -Property MemoryDevices -Sum).Sum
+$maxKb = ($arr | ForEach-Object { if ([uint64]$_.MaxCapacityEx -gt 0) { [uint64]$_.MaxCapacityEx } else { [uint64]$_.MaxCapacity } } | Measure-Object -Sum).Sum
+$o.board = [pscustomobject]@{
+    Maker = "$($bb.Manufacturer)".Trim(); Product = "$($bb.Product)".Trim()
+    Bios = "$($bios.SMBIOSBIOSVersion)".Trim(); BiosDate = if ($bios.ReleaseDate) { $bios.ReleaseDate.ToString('yyyy-MM-dd') } else { '' }
+    Slots = [int]$slots; Used = @(Get-CimInstance Win32_PhysicalMemory).Count; MaxKB = [uint64]$maxKb
+}
+$o.cpuName = "$((Get-CimInstance Win32_Processor | Select-Object -First 1).Name)".Trim()
+
+# ── TPM, Secure Boot e estilo do disco do Windows
+$tpm = Get-CimInstance -Namespace root/cimv2/Security/MicrosoftTpm -ClassName Win32_Tpm
+if ($tpm) {
+    $o.tpm = [pscustomobject]@{ Enabled = [bool]$tpm.IsEnabled_InitialValue; Activated = [bool]$tpm.IsActivated_InitialValue
+        Spec = "$($tpm.SpecVersion)"; Maker = "$($tpm.ManufacturerIdTxt)".Trim() }
+}
+$sb = Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot\State' -Name UEFISecureBootEnabled -ErrorAction SilentlyContinue
+if ($sb) { $o.secureBoot = [int]$sb.UEFISecureBootEnabled -eq 1 }
+try {
+    $sysDisk = Get-Partition -DriveLetter ($env:SystemDrive.TrimEnd(':')) -ErrorAction Stop | Get-Disk -ErrorAction Stop
+    $o.systemDiskGpt = "$($sysDisk.PartitionStyle)" -eq 'GPT'
+} catch { }
+
 # ── Sistema
 $os = Get-CimInstance Win32_OperatingSystem
 if ($os.LastBootUpTime) { $o.uptimeDays = [math]::Round(((Get-Date) - $os.LastBootUpTime).TotalDays, 1) }

@@ -82,6 +82,12 @@
                     <RadioButton x:Name="NavHealth" Style="{StaticResource NavButton}" GroupName="nav">
                         <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE95E;"/><TextBlock Text="Saúde do PC" Margin="12,0,0,0"/></StackPanel>
                     </RadioButton>
+                    <RadioButton x:Name="NavCleanup" Style="{StaticResource NavButton}" GroupName="nav">
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE74D;"/><TextBlock Text="Limpeza e manutenção" Margin="12,0,0,0"/></StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="NavProcesses" Style="{StaticResource NavButton}" GroupName="nav">
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE9D9;"/><TextBlock Text="Processos" Margin="12,0,0,0"/></StackPanel>
+                    </RadioButton>
 
                     <TextBlock Text="SNOW MONITOR" Style="{StaticResource NavHeader}" Margin="12,18,0,6"/>
                     <RadioButton x:Name="NavMonitor" Style="{StaticResource NavButton}" GroupName="nav">
@@ -111,6 +117,8 @@
             <views:CanRunView Visibility="{Binding IsChecked, ElementName=NavCanRun, Converter={StaticResource BoolVis}}"/>
             <views:StartupView Visibility="{Binding IsChecked, ElementName=NavStartup, Converter={StaticResource BoolVis}}"/>
             <views:HealthView Visibility="{Binding IsChecked, ElementName=NavHealth, Converter={StaticResource BoolVis}}"/>
+            <views:CleanupView Visibility="{Binding IsChecked, ElementName=NavCleanup, Converter={StaticResource BoolVis}}"/>
+            <views:ProcessesView Visibility="{Binding IsChecked, ElementName=NavProcesses, Converter={StaticResource BoolVis}}"/>
             <views:MonitorView Visibility="{Binding IsChecked, ElementName=NavMonitor, Converter={StaticResource BoolVis}}"/>
             <views:BenchView Visibility="{Binding IsChecked, ElementName=NavBench, Converter={StaticResource BoolVis}}"/>
             <views:RestoreView Visibility="{Binding IsChecked, ElementName=NavRestore, Converter={StaticResource BoolVis}}"/>

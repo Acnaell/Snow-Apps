@@ -18,7 +18,7 @@
                 <StackPanel>
                     <TextBlock Text="Saúde do PC" Style="{StaticResource H1}"/>
                     <TextBlock Style="{StaticResource Caption}" FontSize="13" Margin="0,4,0,0"
-                               Text="Somente leitura: discos (SMART), estabilidade nos últimos 30 dias, drivers, espaço e bateria. Nada é alterado."/>
+                               Text="Somente leitura: discos (SMART), estabilidade nos últimos 30 dias, drivers, espaço, bateria, placa-mãe, TPM e Secure Boot. Nada é alterado."/>
                 </StackPanel>
             </DockPanel>
 
@@ -40,6 +40,8 @@
                             <Button Command="{Binding OpenReliabilityCommand}" Margin="0,0,8,6" Content="Monitor de Confiabilidade"/>
                             <Button Command="{Binding OpenDeviceManagerCommand}" Margin="0,0,8,6" Content="Gerenciador de Dispositivos"/>
                             <Button Command="{Binding OpenStorageCommand}" Margin="0,0,8,6" Content="Armazenamento do Windows"/>
+                            <Button Command="{Binding OpenTpmCommand}" Margin="0,0,8,6" Content="TPM (tpm.msc)"/>
+                            <Button Command="{Binding OpenSysInfoCommand}" Margin="0,0,8,6" Content="Informações do Sistema"/>
                         </WrapPanel>
                     </StackPanel>
                 </DockPanel>
