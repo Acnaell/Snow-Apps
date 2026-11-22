@@ -69,3 +69,15 @@ public static class CanRunTests
         Assert.Equal(CanRunLevel.Abaixo, w["cyberpunk"].Level);
     }
 }
+
+public static class GpuIdTests
+{
+    [Test] public static void GenericDriverNamesResolveByPciId()
+    {
+        Assert.Equal("AMD Radeon RX 580 2048SP", Snow.Core.Compat.GpuIds.Resolve("AMD Radeon Graphics Processor (0x6FDF)", null), "nome do CYRI");
+        Assert.Equal("AMD Radeon RX 580 2048SP", Snow.Core.Compat.GpuIds.Resolve("Microsoft Basic Display Adapter", @"PCI\VEN_1002&DEV_6FDF&SUBSYS_0B311002&REV_EF\4&1"));
+        Assert.Equal("Radeon RX 580 2048SP", Snow.Core.Compat.GpuIds.Resolve("Radeon RX 580 2048SP", @"PCI\VEN_1002&DEV_6FDF"), "nome bom fica");
+        Assert.Equal(88, Snow.Core.Compat.HardwareIndex.Gpu(Snow.Core.Compat.GpuIds.Resolve("AMD Radeon Graphics Processor (0x6FDF)", null)));
+        Assert.Equal("Placa Misteriosa X", Snow.Core.Compat.GpuIds.Resolve("Placa Misteriosa X", @"PCI\VEN_1234&DEV_5678"), "desconhecida mantém o nome");
+    }
+}

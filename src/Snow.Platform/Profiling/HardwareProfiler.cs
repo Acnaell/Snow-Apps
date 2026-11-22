@@ -240,7 +240,8 @@ public static partial class HardwareProfiler
         var isVirtual = GpuGenerations.IsVirtualAdapter(vendor, name);
         return new GpuInfo
         {
-            Name = name.Trim(),
+            // Driver com nome genérico ("AMD Radeon Graphics Processor (0x6FDF)") → modelo pelo ID PCI
+            Name = Snow.Core.Compat.GpuIds.Resolve(name.Trim(), pnp),
             Vendor = vendor,
             VramBytes = vram,
             DriverVersion = driver,

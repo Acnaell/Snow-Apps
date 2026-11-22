@@ -128,6 +128,9 @@ jobs:
           $out = & $cli bench | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0 -or $out -notmatch 'leitura \d+ MB/s') { throw "bench falhou" }
+          $out = & $cli ai | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch 'IA LOCAL' -or $out -notmatch 'Llama 3.1 8B') { throw "ai falhou" }
           $out = & $cli stress --minutes 0.4 | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0 -or $out -notmatch 'Processador estável' -or $out -notmatch 'Memória sem erros') { throw "stress falhou" }
