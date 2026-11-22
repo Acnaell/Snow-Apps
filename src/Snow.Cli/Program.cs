@@ -32,7 +32,6 @@ public static class Program
           snow-cli gpu                                  Fontes de VRAM (DXGI, registro, WMI) para diagnóstico
           snow-cli update [--check] [--yes]             Verifica/instala a versão mais nova (SHA-256 conferido)
           snow-cli monitor [--seconds 30] [--game auto|fortnite|lol|valorant]   Snow Monitor: uso, FPS e gargalo
-          snow-cli ai                                   IA local: quais modelos (LM Studio/Ollama) rodam e a que velocidade
           snow-cli canrun [--search "nome do jogo"]     Roda no meu PC? Requisitos oficiais (ou da Steam) × seu hardware
           snow-cli bench [--drives C,D]                 Pontuação: CPU (1 núcleo / todos), memória e discos
           snow-cli stress [--minutes 10] [--no-ram] [--no-cpu]   Estresse com conferência de erros e queda de clock
@@ -87,7 +86,6 @@ public static class Program
                 "upgrade" => Upgrade(opts),
                 "bench" => Bench(opts),
                 "canrun" => CanRunCmd(opts),
-                "ai" => Ai(),
                 "stress" => Stress(opts),
                 "compare" => Compare(args.Skip(1).Where(a => !a.StartsWith("--")).ToArray()),
                 "game-apply" => GameApply(opts),
@@ -469,18 +467,6 @@ public static class Program
         Console.WriteLine($"{hw.Cpu.Name} → índice {Snow.Core.Compat.HardwareIndex.Cpu(hw.Cpu)?.ToString() ?? "?"} · {hw.PrimaryGpu?.Name} → índice {Snow.Core.Compat.HardwareIndex.Gpu(hw.PrimaryGpu?.Name)?.ToString() ?? "?"} · {hw.Memory.TotalGb:0} GB\n");
         foreach (var r in Snow.Core.Compat.CanRun.EvaluateAll(hw).OrderByDescending(r => r.Level))
             Console.WriteLine($"[{Snow.Core.Compat.CanRun.Label(r.Level),-15}] {r.Game.Name,-24} {r.Verdict}\n{"",18}{r.Detail}\n{"",18}{r.Comparison}");
-        return 0;
-    }
-
-    private static int Ai()
-    {
-        var hw = HardwareProfiler.Collect();
-        var g = hw.PrimaryGpu;
-        var r = Snow.Platform.Bench.BenchRunner.Ai(g?.IsDiscrete == true ? g.Name : null, g?.IsDiscrete == true ? g.VramBytes : 0, hw.Memory.TotalBytes, new Progress<string>(Console.WriteLine));
-        Console.WriteLine($"\n══════════ IA LOCAL ══════════\n{r.Gpu} · {r.VramGb:0} GB de VRAM{(r.GpuSpec is { } s ? $" ({s.BandwidthGBs:0} GB/s)" : "")} · RAM {r.RamGb:0} GB a {r.RamBandwidthGBs:0} GB/s · processador {r.CpuGflops:0} GFLOPS\n");
-        foreach (var m in r.Models) Console.WriteLine($"{m.Model.Name,-28} {m.Verdict}");
-        Console.WriteLine($"\n{r.Summary}");
-        foreach (var n in r.Notes) Console.WriteLine($"• {n}");
         return 0;
     }
 

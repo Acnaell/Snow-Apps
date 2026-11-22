@@ -23,7 +23,6 @@ public sealed class DriveOption(string letter, string label, bool selected, stri
 public sealed record ResultRow(string Metric, string Value, string Verdict, string Delta, bool Better);
 public sealed record VerdictRow(bool Ok, string Title, string Detail);
 public sealed record DurationOption(string Label, int Minutes);
-public sealed record AiRow(string Name, string Use, string Verdict, string Where);
 
 public sealed class BenchViewModel : ObservableObject
 {
@@ -36,7 +35,6 @@ public sealed class BenchViewModel : ObservableObject
         RunBenchCommand = new RelayCommand(async () => await RunBenchAsync(), () => !IsBusy);
         RunStressCommand = new RelayCommand(async () => await RunStressAsync(), () => !IsBusy);
         CancelCommand = new RelayCommand(() => _cts?.Cancel(), () => IsBusy);
-        RunAiCommand = new RelayCommand(async () => await RunAiAsync(), () => !IsBusy);
         SelectedDuration = Durations[1];
         LoadHistory();
     }
@@ -61,39 +59,6 @@ public sealed class BenchViewModel : ObservableObject
     public ICommand RunBenchCommand { get; }
     public ICommand RunStressCommand { get; }
     public ICommand CancelCommand { get; }
-    public ICommand RunAiCommand { get; }
-    public ObservableCollection<AiRow> AiRows { get; } = [];
-    public ObservableCollection<string> AiNotes { get; } = [];
-    private string _aiSummary = "Mede a memória e o processador (~10 s) e mostra quais modelos de IA rodam no seu PC (LM Studio, Ollama) e a que velocidade.";
-    public string AiSummary { get => _aiSummary; set => Set(ref _aiSummary, value); }
-    private string _aiHardware = "";
-    public string AiHardware { get => _aiHardware; set => Set(ref _aiHardware, value); }
-
-    private async Task RunAiAsync()
-    {
-        if (Hardware is null) return;
-        IsBusy = true;
-        _cts = new CancellationTokenSource();
-        try
-        {
-            var g = Hardware.PrimaryGpu;
-            var gpuName = g?.IsDiscrete == true ? g.Name : null;
-            var vram = g?.IsDiscrete == true ? g.VramBytes : 0;
-            var progress = new Progress<string>(m => AiSummary = m);
-            var r = await Task.Run(() => BenchRunner.Ai(gpuName, vram, Hardware.Memory.TotalBytes, progress, _cts.Token));
-            AiRows.Clear(); AiNotes.Clear();
-            foreach (var m in r.Models) AiRows.Add(new AiRow(m.Model.Name, m.Model.Use, m.Verdict, m.Where.ToString()));
-            foreach (var n in r.Notes) AiNotes.Add(n);
-            AiHardware = $"{(gpuName ?? "Sem placa de vídeo dedicada")}{(vram > 0 ? $" · {vram / (double)(1L << 30):0} GB de VRAM" : "")}{(r.GpuSpec is { } s ? $" ({s.BandwidthGBs:0} GB/s)" : "")} · RAM {r.RamGb:0} GB a {r.RamBandwidthGBs:0} GB/s medidos · processador {r.CpuGflops:0} GFLOPS medidos";
-            AiSummary = r.Summary;
-            _log.Info($"IA local: {r.Summary}");
-        }
-        catch (OperationCanceledException) { AiSummary = "Cancelado."; }
-        catch (Exception e) { AiSummary = "Falhou: " + e.Message; _log.Error("IA local: " + e); }
-        finally { IsBusy = false; OnPropertyChanged(nameof(HasAi)); }
-    }
-
-    public bool HasAi => AiRows.Count > 0;
 
     public ObservableCollection<DriveOption> Drives { get; } = [];
     public ObservableCollection<ResultRow> Results { get; } = [];

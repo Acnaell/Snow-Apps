@@ -57,9 +57,6 @@ Nota de saúde de 0 a 100, **somente leitura** e sem drivers. Ela cobre:
 
 Cada achado vem com "O que fazer".
 
-### Roda IA no meu PC?
-Na tela Pontuação e estresse: mede a banda da RAM e o cálculo de matrizes do processador (~10 s) e, com a memória e a banda da placa de vídeo, estima quais modelos locais (Llama, Qwen, Gemma em GGUF Q4, no LM Studio ou Ollama) cabem e quantos tokens/s geram: na placa de vídeo, divididos com a RAM ou só no processador. Indica o programa certo para a sua placa (ex.: RX 580 não tem ROCm, use o motor Vulkan). `snow-cli ai`.
-
 A placa de vídeo também é reconhecida pelo código PCI quando o driver mostra um nome genérico (ex.: "AMD Radeon Graphics Processor (0x6FDF)" = RX 580 2048SP), caso em que outros verificadores reprovam a placa por não reconhecê-la.
 
 ### Limpeza e manutenção

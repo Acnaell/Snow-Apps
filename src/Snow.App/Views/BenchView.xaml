@@ -67,49 +67,6 @@
                 </StackPanel>
             </Border>
 
-            <!-- IA local -->
-            <Border Style="{StaticResource Card}" Margin="0,0,12,12">
-                <StackPanel>
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Command="{Binding RunAiCommand}" VerticalAlignment="Top">
-                            <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE945;" FontSize="13"/><TextBlock Text="Testar IA local (~10 s)" Margin="8,0,0,0"/></StackPanel>
-                        </Button>
-                        <StackPanel>
-                            <TextBlock Text="Roda IA no meu PC?" Style="{StaticResource H2}"/>
-                            <TextBlock Text="{Binding AiSummary}" Style="{StaticResource Caption}" Margin="0,6,12,0" TextWrapping="Wrap"/>
-                            <TextBlock Text="{Binding AiHardware}" Style="{StaticResource Caption}" Margin="0,4,12,0" TextWrapping="Wrap" Foreground="{DynamicResource AccentBrush}"/>
-                        </StackPanel>
-                    </DockPanel>
-                    <ItemsControl ItemsSource="{Binding AiRows}" Margin="0,8,0,0" Visibility="{Binding HasAi, Converter={StaticResource BoolVis}}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,8">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                            <TextBlock Text="{Binding Use}" Style="{StaticResource Caption}"/>
-                                        </StackPanel>
-                                        <TextBlock x:Name="V" Grid.Column="1" Text="{Binding Verdict}" Style="{StaticResource Body}" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                                    </Grid>
-                                </Border>
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding Where}" Value="PlacaDeVideo"><Setter TargetName="V" Property="Foreground" Value="{DynamicResource GoodBrush}"/></DataTrigger>
-                                    <DataTrigger Binding="{Binding Where}" Value="NaoCabe"><Setter TargetName="V" Property="Foreground" Value="{DynamicResource MutedBrush}"/></DataTrigger>
-                                </DataTemplate.Triggers>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <ItemsControl ItemsSource="{Binding AiNotes}" Margin="0,6,0,0">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate><TextBlock Text="{Binding StringFormat='• {0}'}" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,3,0,0"/></DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Style="{StaticResource Caption}" Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.8"
-                               Text="Estimativa para modelos GGUF Q4_K_M. A banda da RAM e o cálculo do processador são medidos; a da placa de vídeo vem da especificação do fabricante. Erro típico: ±25%."/>
-                </StackPanel>
-            </Border>
-
             <!-- Estresse -->
             <Border Style="{StaticResource Card}" Margin="0,0,12,12">
                 <StackPanel>

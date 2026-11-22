@@ -10,19 +10,6 @@ public static class BenchRunner
 {
     public static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SnowBench");
 
-    /// <summary>IA local: mede banda da RAM e cálculo do processador (~8 s) e estima os modelos que cabem.</summary>
-    public static AiReport Ai(string? gpuName, long vramBytes, long ramBytes, IProgress<string>? progress = null, CancellationToken ct = default)
-    {
-        var threads = Environment.ProcessorCount;
-        progress?.Report("IA: banda da memória…");
-        var bw = MemoryWork.Bandwidth(Math.Min(threads, 8));
-        ct.ThrowIfCancellationRequested();
-        progress?.Report("IA: cálculo de matrizes no processador…");
-        var gflops = AiCompute.CpuGflops(threads, TimeSpan.FromSeconds(4), ct);
-        GC.Collect();
-        return AiBench.Analyze(gpuName, vramBytes / (double)(1L << 30), ramBytes / (double)(1L << 30), bw, gflops);
-    }
-
     public static BenchResult Run(string cpuName, IEnumerable<string> drives, IProgress<string>? progress = null, CancellationToken ct = default)
     {
         var threads = Environment.ProcessorCount;
