@@ -342,6 +342,13 @@ public sealed class ValorantProfile : IGameProfile
             new("Vídeo → Qualidade gráfica", "Qualidade da interface", "Baixa", "Sem impacto competitivo"),
             new("Vídeo → Qualidade gráfica", "Vinheta, Distorção (desativar), Bloom", "Desligado / Desativar distorção: Ligado / Bloom: Desligado", "Imagem mais limpa"),
             new("Vídeo → Qualidade gráfica", "VSync", "Desligado", "Remove o atraso de entrada"),
+            new("Vídeo → Qualidade gráfica", "Sombras projetadas", high || tier < HardwareTier.Avancado ? "Desligado" : "Ligado",
+                "Sombras aumentam o trabalho do processador (mais coisas para desenhar). Desligar é o maior ganho quando o jogo está preso na CPU"),
+            new("Vídeo → Qualidade gráfica", "Qualidade dos detalhes", high || tier < HardwareTier.Avancado ? "Baixa" : "Média",
+                "Detalhes do mapa também pesam no processador"),
+            new("Vídeo → Qualidade gráfica", "Antisserrilhamento", high ? "MSAA 2x" : "MSAA 4x",
+                "Pesa só na placa de vídeo. Se o Desempenho mostrar a GPU abaixo de 70%, o MSAA 4x não custa FPS"),
+            new("Vídeo → Qualidade gráfica", "Filtragem anisotrópica", "4x", "Chão e paredes nítidos a distância, custo quase zero"),
             high
                 ? new("Vídeo → Geral", "Limitar FPS sempre", "Desligado (com Reflex) ou um teto bem acima do monitor", "Mais FPS = menor latência; o teto só evita aquecer à toa")
                 : new("Vídeo → Geral", "Limitar FPS sempre", ctx.RefreshHz > 0 ? $"Ligado · {ctx.RefreshHz}" : "Ligado · taxa do monitor", "Frametime estável na taxa do monitor"),
