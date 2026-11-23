@@ -59,6 +59,12 @@ Cada achado vem com "O que fazer".
 
 A placa de vídeo também é reconhecida pelo código PCI quando o driver mostra um nome genérico (ex.: "AMD Radeon Graphics Processor (0x6FDF)" = RX 580 2048SP), caso em que outros verificadores reprovam a placa por não reconhecê-la.
 
+### Avaliar o Snow
+Na barra lateral: nota de 0 a 10 (indicador de recomendação, colorido por faixa), se sentiu diferença nos jogos, dicas do que melhorar, partes usadas e comentário. Ao enviar, abre o [formulário de avaliação](https://forms.gle/UQsdCZtYTtM4rxAs6) já preenchido, com a versão do Snow e o modelo do PC (sem nome, e-mail ou arquivos). Ao terminar uma limpeza ou aplicação, o painel de progresso também oferece "Avaliar o Snow".
+
+### Progresso visível
+Aplicar melhorias, restaurar, medir e limpar mostram um painel grande no centro: o que está sendo feito, "3 de 12", porcentagem e, no fim, "✔ Concluído" com o resumo (quantas melhorias, quanto espaço liberado).
+
 ### Limpeza e manutenção
 Mede antes de apagar e só mexe no que o Windows e os apps recriam sozinhos: temporários, atualizações já instaladas, Otimização de Entrega, relatórios de erro, logs antigos, caches de interface da Steam/Epic/Discord (só com o app fechado) e, opcionais, cache do Spotify, despejos de memória, caches de shader e Lixeira. Windows.old é medido e aberto no assistente do Windows. Arquivos em uso e links (junctions) são ignorados. **Não** limpa Prefetch, registro, pastas de jogos/anti-cheat nem o cache dos navegadores (a tela explica por quê). Também confere **TRIM** e a **otimização semanal das unidades**, otimiza agora (TRIM no SSD, desfragmentação só no HD) e limpa componentes antigos do Windows (DISM). `snow-cli clean [--apply padrao|ids]`.
 

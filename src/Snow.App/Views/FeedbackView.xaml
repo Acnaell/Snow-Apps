@@ -1,0 +1,128 @@
+<UserControl x:Class="Snow.App.Views.FeedbackView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             DataContext="{Binding Feedback}">
+    <UserControl.Resources>
+        <Style x:Key="ScoreButton" TargetType="RadioButton">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="B" CornerRadius="8" Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <TextBlock x:Name="T" Text="{Binding Value}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/></Trigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions><Condition Binding="{Binding Selected}" Value="True"/><Condition Binding="{Binding Band}" Value="Critico"/></MultiDataTrigger.Conditions>
+                                <Setter TargetName="B" Property="Background" Value="{DynamicResource BadBrush}"/><Setter TargetName="T" Property="Foreground" Value="White"/>
+                            </MultiDataTrigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions><Condition Binding="{Binding Selected}" Value="True"/><Condition Binding="{Binding Band}" Value="Neutro"/></MultiDataTrigger.Conditions>
+                                <Setter TargetName="B" Property="Background" Value="{DynamicResource WarnBrush}"/><Setter TargetName="T" Property="Foreground" Value="White"/>
+                            </MultiDataTrigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions><Condition Binding="{Binding Selected}" Value="True"/><Condition Binding="{Binding Band}" Value="Fa"/></MultiDataTrigger.Conditions>
+                                <Setter TargetName="B" Property="Background" Value="{DynamicResource GoodBrush}"/><Setter TargetName="T" Property="Foreground" Value="White"/>
+                            </MultiDataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Chip" TargetType="CheckBox">
+            <Setter Property="Margin" Value="0,0,8,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="B" CornerRadius="14" Padding="12,6" Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="Mark" Text="✓ " Visibility="Collapsed" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold"/>
+                                <ContentPresenter TextElement.Foreground="{DynamicResource TextBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="Mark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,28,20,90" MaxWidth="900" HorizontalAlignment="Left">
+            <TextBlock Text="Avaliar o Snow" Style="{StaticResource H1}"/>
+            <TextBlock Style="{StaticResource Caption}" FontSize="13" Margin="0,4,0,16" TextWrapping="Wrap"
+                       Text="Leva 1 minuto. Ao enviar, o formulário abre no navegador já preenchido com suas respostas, a versão do Snow e o modelo do PC (sem nome, e-mail ou arquivos). Você confere e clica em Enviar."/>
+
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="De 0 a 10, quanto você recomendaria o Snow a um amigo?" Style="{StaticResource H2}"/>
+                    <ItemsControl ItemsSource="{Binding Scores}" Margin="0,12,0,6">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate><RadioButton Style="{StaticResource ScoreButton}" GroupName="score" IsChecked="{Binding Selected, Mode=TwoWay}" AutomationProperties.Name="{Binding Value}"/></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <DockPanel Margin="0,0,0,4" Width="560" HorizontalAlignment="Left">
+                        <TextBlock DockPanel.Dock="Right" Text="Com certeza" Style="{StaticResource Caption}"/>
+                        <TextBlock Text="Nada provável" Style="{StaticResource Caption}"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding BandText}" Style="{StaticResource Body}" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource AccentBrush}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Você sentiu diferença nos jogos?" Style="{StaticResource H2}"/>
+                    <ItemsControl ItemsSource="{Binding Differences}" Margin="0,10,0,0">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox Style="{StaticResource Chip}" Content="{Binding Text}" IsChecked="{Binding Selected, Mode=OneWay}"
+                                          Command="{Binding DataContext.PickDifferenceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="O que podemos melhorar?" Style="{StaticResource H2}"/>
+                    <TextBlock Text="Marque quantas quiser." Style="{StaticResource Caption}" Margin="0,2,0,10"/>
+                    <ItemsControl ItemsSource="{Binding Improve}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate><CheckBox Style="{StaticResource Chip}" Content="{Binding Text}" IsChecked="{Binding Selected}"/></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="Quais partes você usou?" Style="{StaticResource Body}" FontWeight="SemiBold" Margin="0,10,0,8"/>
+                    <ItemsControl ItemsSource="{Binding Parts}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate><CheckBox Style="{StaticResource Chip}" Content="{Binding Text}" IsChecked="{Binding Selected}"/></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="Conte com suas palavras (opcional)" Style="{StaticResource Body}" FontWeight="SemiBold" Margin="0,10,0,6"/>
+                    <TextBox Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" MaxLength="1500"/>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal">
+                <Button Style="{StaticResource PrimaryButton}" Command="{Binding SendCommand}">
+                    <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE724;" FontSize="13"/><TextBlock Text="Enviar avaliação" Margin="8,0,0,0"/></StackPanel>
+                </Button>
+                <TextBlock Text="{Binding Status}" Style="{StaticResource Body}" Margin="14,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="560" Foreground="{DynamicResource GoodBrush}"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

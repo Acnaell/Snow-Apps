@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _vm;
+        _vm.NavigateRequested += page => { if (page == "feedback") NavFeedback.IsChecked = true; };
         SourceInitialized += (_, _) => ThemeManager.ApplyTitleBar(this);
         Loaded += async (_, _) =>
         {
@@ -41,7 +42,7 @@ public partial class MainWindow : Window
         {
             (NavDiag, "1-diagnostico"), (NavOpt, "2-otimizar"), (NavGames, "3-jogos"), (NavStartup, "4-inicializacao"),
             (NavHealth, "5-health"), (NavMonitor, "6-monitor"), (NavRestore, "7-restaurar"), (NavLog, "8-log"),
-            (NavBench, "9-benchmark"), (NavCanRun, "10-roda-no-meu-pc"), (NavCleanup, "11-limpeza"), (NavProcesses, "12-processos"),
+            (NavBench, "9-benchmark"), (NavCanRun, "10-roda-no-meu-pc"), (NavCleanup, "11-limpeza"), (NavProcesses, "12-processos"), (NavFeedback, "13-avaliacao"),
         };
         foreach (var (nav, name) in pages)
         {

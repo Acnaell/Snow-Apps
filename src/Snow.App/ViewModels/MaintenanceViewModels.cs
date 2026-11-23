@@ -64,6 +64,9 @@ public sealed class MaintenanceViewModel : ObservableObject
 
     public ObservableCollection<CleanupItemViewModel> Items { get; } = [];
     public IReadOnlyList<KeyValuePair<string, string>> NotCleaned { get; }
+    /// <summary>Painel de progresso grande da limpeza.</summary>
+    public WorkProgress Work { get; } = new();
+    public event Action? Cleaned;
     public ICommand ScanCommand { get; }
     public ICommand CleanCommand { get; }
     public ICommand OpenManualCommand { get; }
@@ -102,22 +105,30 @@ public sealed class MaintenanceViewModel : ObservableObject
     public string DrivesText => _drives is null ? "Verificando TRIM e otimização semanal…"
         : $"TRIM: {(_drives.TrimEnabled switch { true => "ligado", false => "desligado", _ => "desconhecido" })} · Otimização semanal do Windows: {(_drives.ScheduledOptimization switch { true => "ligada", false => "desligada", _ => "desconhecida" })}";
 
-    public async Task ScanAsync()
+    public async Task ScanAsync() => await ScanAsync(showProgress: true);
+
+    public async Task ScanAsync(bool showProgress)
     {
         IsBusy = true;
         Status = "Medindo…";
+        if (showProgress && App.Options.ScreenshotDir is null) Work.Start("Medindo o que dá para limpar", known: true);
         try
         {
             foreach (var i in Items) i.Measure = null;
-            foreach (var i in Items)
+            for (var n = 0; n < Items.Count; n++)
+            {
+                var i = Items[n];
+                if (showProgress) Work.Report(n, Items.Count, i.Title, "itens");
                 i.Measure = await Task.Run(() => MaintenanceService.Measure(i.Category));
+            }
+            if (showProgress) Work.Hide();
             Drives ??= await Task.Run(MaintenanceService.ReadDriveCare);
             var total = Items.Where(i => !i.IsManual && i.Measure is { Skipped: null }).Sum(i => i.Measure!.Bytes);
             Status = $"Dá para liberar até {CleanupCatalog.Size(total)}. Os itens marcados são seguros; os desmarcados têm um porém, explicado em cada um.";
             OnPropertyChanged(nameof(SelectedTotal));
         }
         catch (Exception e) { _log.Error("Limpeza: medição falhou: " + e.Message); Status = "Não foi possível medir: " + e.Message; }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; if (showProgress) Work.Hide(); }
     }
 
     private async Task CleanAsync()
@@ -130,11 +141,15 @@ public sealed class MaintenanceViewModel : ObservableObject
         IsBusy = true;
         long files = 0, bytes = 0;
         var skipped = new List<string>();
+        Work.Start("Limpando", known: true);
+        var finished = false;
         try
         {
-            foreach (var i in chosen)
+            for (var n = 0; n < chosen.Count; n++)
             {
+                var i = chosen[n];
                 Status = $"Limpando: {i.Title}…";
+                Work.Report(n, chosen.Count, $"{i.Title}… (liberado até agora: {CleanupCatalog.Size(bytes)})", "itens");
                 var r = await Task.Run(() => MaintenanceService.Clean(i.Category));
                 files += r.Files; bytes += r.Bytes;
                 if (r.Skipped is not null) skipped.Add($"{i.Title} ({r.Skipped})");
@@ -142,27 +157,34 @@ public sealed class MaintenanceViewModel : ObservableObject
             }
             Status = $"Liberado: {CleanupCatalog.Size(bytes)} ({files:N0} arquivos)." + (skipped.Count > 0 ? " Pulados: " + string.Join("; ", skipped) + "." : "");
             var final = Status;
+            _ = Work.FinishAsync(final, 4000);
+            finished = true;
+            Cleaned?.Invoke();
             IsBusy = false;
-            await ScanAsync();
+            await ScanAsync(showProgress: false);
             Status = final;
         }
         catch (Exception e) { _log.Error("Limpeza falhou: " + e.Message); Status = "Falhou: " + e.Message; }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; if (!finished) Work.Hide(); }
     }
 
     private async Task Run(string busy, Func<string> work)
     {
         IsBusy = true;
         Status = busy;
+        Work.Start(busy, known: false);
+        var done = false;
         try
         {
             var msg = await Task.Run(work);
             Status = msg;
+            _ = Work.FinishAsync(msg);
+            done = true;
             _log.Info("Manutenção: " + msg);
             Drives = await Task.Run(MaintenanceService.ReadDriveCare);
         }
         catch (Exception e) { Status = "Falhou: " + e.Message; _log.Error("Manutenção: " + e.Message); }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; if (!done) Work.Hide(); }
     }
 
     private void Start(string target)

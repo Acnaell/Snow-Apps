@@ -47,6 +47,9 @@ public sealed class MainViewModel : ObservableObject
         Games = new GamesViewModel(_service, _log, LoadBackups);
         Health = new HealthViewModel(_log);
         Maintenance = new MaintenanceViewModel(_log);
+        Maintenance.Cleaned += () => Feedback.MarkUsed("Limpeza e manutenção");
+        Feedback = new FeedbackViewModel(_log, SystemSummary);
+        OpenFeedbackCommand = new RelayCommand(() => { Work.Hide(); Maintenance.Work.Hide(); NavigateRequested?.Invoke("feedback"); });
         Processes = new ProcessesViewModel(_log, _startup, LoadStartup);
         Monitor = new MonitorViewModel(_log);
         Bench = new BenchViewModel(_log);
@@ -73,9 +76,22 @@ public sealed class MainViewModel : ObservableObject
     public string ThemeIcon => ThemeManager.Current == AppTheme.Dark ? "" : "";
 
     private bool _isBusy;
-    public bool IsBusy { get => _isBusy; set { Set(ref _isBusy, value); CommandManager.InvalidateRequerySuggested(); } }
+    public bool IsBusy
+    {
+        get => _isBusy;
+        set
+        {
+            Set(ref _isBusy, value);
+            CommandManager.InvalidateRequerySuggested();
+            if (value && !Work.Visible) Work.Start(BusyText, known: false);
+            else if (!value && !Work.Done) Work.Hide();
+        }
+    }
+
+    /// <summary>Painel de progresso grande no centro da janela.</summary>
+    public WorkProgress Work { get; } = new();
     private string _busyText = "";
-    public string BusyText { get => _busyText; set => Set(ref _busyText, value); }
+    public string BusyText { get => _busyText; set { Set(ref _busyText, value); if (!string.IsNullOrEmpty(value) && !Work.Done) Work.Title = value; } }
     private double _progress;
     public double Progress { get => _progress; set => Set(ref _progress, value); }
 
@@ -83,6 +99,18 @@ public sealed class MainViewModel : ObservableObject
     public GamesViewModel Games { get; }
     public HealthViewModel Health { get; }
     public MaintenanceViewModel Maintenance { get; }
+    public FeedbackViewModel Feedback { get; }
+    public ICommand OpenFeedbackCommand { get; }
+    /// <summary>Pede à janela para trocar de página (ex.: "feedback").</summary>
+    public event Action<string>? NavigateRequested;
+
+    /// <summary>Versão do Snow, Windows e peças principais (sem nome de usuário, e-mail ou caminhos).</summary>
+    private string SystemSummary()
+    {
+        var v = typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "?";
+        if (_hw is null) return $"Snow {v}";
+        return $"Snow {v} · {_hw.Os.ProductName} build {_hw.Os.Build} · {_hw.Cpu.Name} · {_hw.PrimaryGpu?.Name ?? "sem GPU"} · {_hw.Memory.TotalGb:0} GB RAM";
+    }
     public ProcessesViewModel Processes { get; }
     public MonitorViewModel Monitor { get; }
     public BenchViewModel Bench { get; }
@@ -305,17 +333,24 @@ public sealed class MainViewModel : ObservableObject
                   (CreateRestorePoint ? "\nUm ponto de restauração do Windows também será criado." : "");
         if (MessageBox.Show(msg, "Snow — confirmar", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
+        Work.Start($"Aplicando {plan.Selected.Count()} melhoria(s)", known: true, step: "Preparando backup dos valores originais…");
         IsBusy = true; Progress = 0; LastResult.Clear();
+        var finished = false;
         try
         {
             var progress = new Progress<ProgressInfo>(p =>
             {
-                BusyText = p.Message;
                 Progress = p.Total == 0 ? 100 : 100.0 * p.Done / p.Total;
+                Work.Report(p.Done, p.Total, p.Message, "melhorias");
             });
             var rp = CreateRestorePoint;
             var session = await Task.Run(() => _service.Apply(plan, new ApplyOptions(rp), progress));
             ShowResult(session);
+            Feedback.MarkUsed("Otimizar o Windows");
+            var ok = session.Tweaks.Count(t => t.Status is TweakStatus.Applied or TweakStatus.PartiallyApplied);
+            var bad = session.Tweaks.Count(t => t.Status == TweakStatus.Failed);
+            _ = Work.FinishAsync($"{ok} melhoria(s) aplicada(s)" + (bad > 0 ? $", {bad} com falha (veja o resultado)" : "") + ". Dá para desfazer em Restaurar.");
+            finished = true;
             LoadBackups();
             LoadStartup();
             await RefreshDiagnosticsOnlyAsync();
@@ -327,9 +362,10 @@ public sealed class MainViewModel : ObservableObject
         catch (Exception e)
         {
             _log.Error("Aplicação falhou: " + e);
+            Work.Hide();
             MessageBox.Show(e.Message, "Snow — erro", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        finally { IsBusy = false; BusyText = ""; }
+        finally { IsBusy = false; BusyText = ""; if (!finished) Work.Hide(); }
     }
 
     private async Task RefreshDiagnosticsOnlyAsync()
@@ -366,11 +402,13 @@ public sealed class MainViewModel : ObservableObject
     {
         var what = b is null ? "TODAS as otimizações ativas" : $"o backup {b.Title}";
         if (MessageBox.Show($"Reverter {what} para os valores originais?", "Snow — restaurar", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        var n = 0;
         await RunBusy("Restaurando valores originais…", () =>
         {
-            var n = b is null ? _service.RestoreAll() : _service.Restore(b.Session);
+            n = b is null ? _service.RestoreAll() : _service.Restore(b.Session);
             _log.Info($"{n} alteração(ões) revertida(s).");
         });
+        _ = Work.FinishAsync($"{n} valor(es) voltaram ao original.");
         LoadBackups();
         LoadStartup();
         await RefreshDiagnosticsOnlyAsync();
@@ -379,6 +417,7 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task RunBusy(string text, Action work)
     {
+        Work.Start(text, known: false);
         IsBusy = true; BusyText = text;
         try { await Task.Run(work); }
         catch (Exception e)
