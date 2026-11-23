@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Windows.Input;
 using Snow.App.Infrastructure;
 using Snow.Core.Feedback;
+using Snow.Platform.Services;
 
 namespace Snow.App.ViewModels;
 
